@@ -44,13 +44,15 @@ SSH：22
 pvesm status
 ```
 
-默认安装通常是 `local-lvm`。如果你的存储名不同，把下面命令里的 `local-lvm` 替换成实际存储名。
+1. 默认安装通常是 `local-lvm`。如果你的存储名不同，把下面命令里的 `local-lvm` 替换成实际存储名。
 
-后续如果发布了新版本，只需要把示例里的 `RELEASE_TAG` 改成 Releases 页面里的新标签。
+2. 后续如果发布了新版本，只需要把示例里的 `RELEASE_TAG` 改成 Releases 页面里的新标签，一般就是把日期改下就OK
+
+**如果你的pve是默认安装，存储名是 local-lvm，直接复制下面的脚本到pve的ssh运行就可以了自动生成并转换模板了，要新建虚拟机只要克隆这个模板就可以了**
 
 ### Debian 12 模板
 
-下面示例会创建 VMID `9012`，模板名 `debian-12-dev-template`。如果你的pve是默认安装，存储名是 local-lvm，直接复制下面的脚本到pve的ssh运行就可以了，如果发布了新的版本标签，只要改改 RELEASE_TAG，就是把日期改下就OK
+下面示例会创建 VMID `9012`，模板名 `debian-12-dev-template`。
 
 ```bash
 # -----------------------------
