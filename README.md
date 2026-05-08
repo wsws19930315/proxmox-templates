@@ -38,17 +38,18 @@ SSH：22
 
 ## 在 PVE 上直接使用 Release 镜像
 
-先确认存储名：
+下面的脚本会自动做两件事：
+
+- 自动读取本仓库最新 GitHub Release 标签，不需要手动改日期。
+- 自动识别 PVE 存储名，优先使用 `local-lvm`，没有时选择第一个支持 `images` 或 `rootdir` 的存储。
+
+如果你的 PVE 是默认安装，通常直接复制脚本到 PVE 的 SSH 里运行即可。创建完成后，新建虚拟机只需要克隆对应模板。
+
+如需先查看 PVE 存储列表：
 
 ```bash
 pvesm status
 ```
-
-1. 默认安装通常是 `local-lvm`。如果你的存储名不同，把下面命令里的 `local-lvm` 替换成实际存储名。
-
-2. 后续如果发布了新版本，只需要把示例里的 `RELEASE_TAG` 改成 Releases 页面里的新标签，一般就是把日期改下就OK
-
-**如果你的pve是默认安装，存储名是 local-lvm，直接复制下面的脚本到pve的ssh运行就可以了自动生成并转换模板了，要新建虚拟机只要克隆这个模板就可以了**
 
 ### Debian 12 模板
 
@@ -59,17 +60,39 @@ pvesm status
 # 1. 基础变量
 # -----------------------------
 
-# GitHub Release 标签。后续有新版本时，只需要改这里。
-RELEASE_TAG="pve-cloud-templates-2026.05.08"
+# GitHub 仓库。
+REPO="vbskycn/proxmox-templates"
+
+# 自动获取本仓库最新 Release 标签。
+RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+if [ -z "${RELEASE_TAG}" ]; then
+  echo "无法获取最新 Release 标签，请检查网络或 GitHub API 访问。"
+  exit 1
+fi
 
 # Release 下载基础地址。
-BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
+BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
 
 # PVE 模板 VMID，建议 9000 段专门留给模板。
 VMID=9012
 
-# PVE 存储名。默认安装通常是 local-lvm，如不同请改成 pvesm status 看到的存储名。
-STORAGE="local-lvm"
+# 自动识别 PVE 存储名：优先 local-lvm，否则选择第一个支持 images/rootdir 的存储。
+if pvesm status | awk 'NR>1 {print $1}' | grep -qx "local-lvm"; then
+  STORAGE="local-lvm"
+else
+  STORAGE="$(pvesm status --content images 2>/dev/null | awk 'NR==2 {print $1}')"
+  if [ -z "${STORAGE}" ]; then
+    STORAGE="$(pvesm status --content rootdir 2>/dev/null | awk 'NR==2 {print $1}')"
+  fi
+fi
+
+if [ -z "${STORAGE}" ]; then
+  echo "无法自动识别 PVE 存储名，请先执行 pvesm status 查看，并手动设置 STORAGE。"
+  exit 1
+fi
+
+echo "使用 Release：${RELEASE_TAG}"
+echo "使用存储：${STORAGE}"
 
 # 模板名称。
 NAME="debian-12-dev-template"
@@ -140,10 +163,18 @@ qm template "${VMID}"
 ### Debian 13 模板
 
 ```bash
-RELEASE_TAG="pve-cloud-templates-2026.05.08"
-BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
+REPO="vbskycn/proxmox-templates"
+RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+[ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
+BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
 VMID=9013
-STORAGE="local-lvm"
+if pvesm status | awk 'NR>1 {print $1}' | grep -qx "local-lvm"; then
+  STORAGE="local-lvm"
+else
+  STORAGE="$(pvesm status --content images 2>/dev/null | awk 'NR==2 {print $1}')"
+  [ -n "${STORAGE}" ] || STORAGE="$(pvesm status --content rootdir 2>/dev/null | awk 'NR==2 {print $1}')"
+fi
+[ -n "${STORAGE}" ] || { echo "无法自动识别 PVE 存储名"; exit 1; }
 NAME="debian-13-dev-template"
 IMAGE="debian-13-genericcloud-amd64-pve-custom.qcow2"
 IMAGE_DIR="/root/cloud-image"
@@ -180,10 +211,18 @@ qm template "${VMID}"
 ### Ubuntu 22.04 模板
 
 ```bash
-RELEASE_TAG="pve-cloud-templates-2026.05.08"
-BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
+REPO="vbskycn/proxmox-templates"
+RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+[ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
+BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
 VMID=9022
-STORAGE="local-lvm"
+if pvesm status | awk 'NR>1 {print $1}' | grep -qx "local-lvm"; then
+  STORAGE="local-lvm"
+else
+  STORAGE="$(pvesm status --content images 2>/dev/null | awk 'NR==2 {print $1}')"
+  [ -n "${STORAGE}" ] || STORAGE="$(pvesm status --content rootdir 2>/dev/null | awk 'NR==2 {print $1}')"
+fi
+[ -n "${STORAGE}" ] || { echo "无法自动识别 PVE 存储名"; exit 1; }
 NAME="ubuntu-22.04-dev-template"
 IMAGE="ubuntu-22.04-server-cloudimg-amd64-pve-custom.qcow2"
 IMAGE_DIR="/root/cloud-image"
@@ -220,10 +259,18 @@ qm template "${VMID}"
 ### Ubuntu 24.04 模板
 
 ```bash
-RELEASE_TAG="pve-cloud-templates-2026.05.08"
-BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
+REPO="vbskycn/proxmox-templates"
+RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+[ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
+BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
 VMID=9024
-STORAGE="local-lvm"
+if pvesm status | awk 'NR>1 {print $1}' | grep -qx "local-lvm"; then
+  STORAGE="local-lvm"
+else
+  STORAGE="$(pvesm status --content images 2>/dev/null | awk 'NR==2 {print $1}')"
+  [ -n "${STORAGE}" ] || STORAGE="$(pvesm status --content rootdir 2>/dev/null | awk 'NR==2 {print $1}')"
+fi
+[ -n "${STORAGE}" ] || { echo "无法自动识别 PVE 存储名"; exit 1; }
 NAME="ubuntu-24.04-dev-template"
 IMAGE="ubuntu-24.04-server-cloudimg-amd64-pve-custom.qcow2"
 IMAGE_DIR="/root/cloud-image"
@@ -271,10 +318,17 @@ qm template "${VMID}"
 比如从模板 `9013` 克隆一台测试 VM，VMID 为 `101`：
 
 ```bash
+if pvesm status | awk 'NR>1 {print $1}' | grep -qx "local-lvm"; then
+  STORAGE="local-lvm"
+else
+  STORAGE="$(pvesm status --content images 2>/dev/null | awk 'NR==2 {print $1}')"
+  [ -n "${STORAGE}" ] || STORAGE="$(pvesm status --content rootdir 2>/dev/null | awk 'NR==2 {print $1}')"
+fi
+
 qm clone 9013 101 \
   --name debian13-dev-test \
   --full 1 \
-  --storage local-lvm
+  --storage "${STORAGE}"
 
 qm resize 101 scsi0 +22G
 qm start 101
