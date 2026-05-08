@@ -92,13 +92,28 @@ jobs:
           ls -lh "${WORKDIR}"
           cat "${WORKDIR}"/*.sha256
 
+      - name: Collect release files
+        run: |
+          mkdir -p "${WORKDIR}/dist"
+          final_qcow2="$(find "${WORKDIR}" -maxdepth 1 -type f -name '*.qcow2' ! -name '*-src.qcow2' ! -name '*-work.qcow2' -print -quit)"
+          if [ -z "${final_qcow2}" ]; then
+            echo "::error::未找到最终 qcow2 镜像文件"
+            exit 1
+          fi
+          final_sha256="${final_qcow2}.sha256"
+          if [ ! -f "${final_sha256}" ]; then
+            echo "::error file=${final_qcow2}::未找到 SHA256 校验文件"
+            exit 1
+          fi
+          cp "${final_qcow2}" "${final_sha256}" "${WORKDIR}/dist/"
+          ls -lh "${WORKDIR}/dist"
+
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: |
-            ${{ env.WORKDIR }}/*.qcow2
-            ${{ env.WORKDIR }}/*.sha256
+            ${{ env.WORKDIR }}/dist/*
           if-no-files-found: error
           retention-days: 14
 
