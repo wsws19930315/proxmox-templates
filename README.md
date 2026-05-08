@@ -50,7 +50,7 @@ pvesm status
 
 ### Debian 12 模板
 
-下面示例会创建 VMID `9012`，模板名 `debian-12-dev-template`。
+下面示例会创建 VMID `9012`，模板名 `debian-12-dev-template`。如果你的pve是默认安装，存储名是 local-lvm，直接复制下面的脚本到pve的ssh运行就可以了，如果发布了新的版本标签，只要改改 RELEASE_TAG，就是把日期改下就OK
 
 ```bash
 # -----------------------------
