@@ -274,7 +274,7 @@ qm clone 9013 101 \
   --full 1 \
   --storage local-lvm
 
-qm resize 101 scsi0 +18G
+qm resize 101 scsi0 +22G
 qm start 101
 ```
 
@@ -351,14 +351,14 @@ WORKDIR=/tmp/pve-cloud-build/ubuntu2404 \
 ROOT_PASSWORD='password' \
 NODE_MAJOR=24 \
 PYTHON_VERSION=3.14.4 \
-IMAGE_DISK_SIZE=12G \
+IMAGE_DISK_SIZE=8G \
 KEEP_BUILD_TOOLS=false \
 ./build-pve-cloud-image.sh
 ```
 
 说明：
 
-- 默认虚拟磁盘为 `12G`
+- 默认虚拟磁盘为 `8G`
 - 默认根分区为 `/dev/sda1`
 - 默认清理 `snapd`、PackageKit、文档缓存和构建临时文件
 - GitHub Actions 固定使用 `ubuntu-22.04` runner，避免 `ubuntu-latest` 上 libguestfs / passt 网络栈差异
