@@ -33,6 +33,10 @@ NODE_MAJOR="${NODE_MAJOR:-24}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.14.4}"
 PYTHON_SHORT_VERSION="${PYTHON_VERSION%.*}"
 
+# GitHub Actions 等受限环境下，libguestfs 默认后端可能触发 passt/libvirt 限制。
+# 显式使用 direct 后端，让 virt-customize 直接启动 qemu appliance。
+export LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND:-direct}"
+
 case "${IMAGE_ID}" in
   debian12)
     IMAGE_NAME="debian-12-genericcloud-amd64-pve-custom"
@@ -74,6 +78,7 @@ echo "最终镜像：${FINAL_IMAGE}"
 echo "root 密码：${ROOT_PASSWORD}"
 echo "Node.js：${NODE_MAJOR}.x LTS"
 echo "额外 Python：${PYTHON_VERSION}"
+echo "libguestfs 后端：${LIBGUESTFS_BACKEND}"
 echo "============================================================"
 
 # -----------------------------

@@ -49,10 +49,26 @@ jobs:
       ROOT_PASSWORD: ${{ inputs.root_password }}
       NODE_MAJOR: ${{ inputs.node_major }}
       PYTHON_VERSION: ${{ inputs.python_version }}
+      LIBGUESTFS_BACKEND: direct
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install host build tools
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            libguestfs-tools \
+            qemu-utils \
+            wget \
+            curl \
+            ca-certificates
+
+      - name: Check libguestfs backend
+        run: |
+          echo "LIBGUESTFS_BACKEND=${LIBGUESTFS_BACKEND}"
+          libguestfs-test-tool
 
       - name: Build image
         run: |
