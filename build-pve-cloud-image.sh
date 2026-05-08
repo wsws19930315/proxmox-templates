@@ -310,7 +310,10 @@ echo "[7/8] 最终镜像信息..."
 qemu-img info "${FINAL_IMAGE}"
 
 echo "[7/8] 生成 SHA256 校验文件..."
-sha256sum "${FINAL_IMAGE}" | tee "${FINAL_IMAGE}.sha256"
+(
+  cd "$(dirname "${FINAL_IMAGE}")"
+  sha256sum "$(basename "${FINAL_IMAGE}")" | tee "$(basename "${FINAL_IMAGE}").sha256"
+)
 
 # -----------------------------
 # 8. 完成
