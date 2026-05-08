@@ -1,0 +1,131 @@
+name: Build PVE Cloud Templates
+
+on:
+  workflow_dispatch:
+    inputs:
+      root_password:
+        description: "镜像 root 默认密码"
+        required: true
+        default: "password"
+      node_major:
+        description: "Node.js LTS 主版本"
+        required: true
+        default: "24"
+      python_version:
+        description: "额外编译安装的 Python 稳定版，不替换系统 python3"
+        required: true
+        default: "3.14.4"
+      publish_release:
+        description: "是否发布到 GitHub Releases"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.image_id }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_id: debian12
+            artifact_name: debian-12-pve-cloud-template
+          - image_id: debian13
+            artifact_name: debian-13-pve-cloud-template
+          - image_id: ubuntu2204
+            artifact_name: ubuntu-22.04-pve-cloud-template
+          - image_id: ubuntu2404
+            artifact_name: ubuntu-24.04-pve-cloud-template
+
+    env:
+      IMAGE_ID: ${{ matrix.image_id }}
+      WORKDIR: /tmp/pve-cloud-build/${{ matrix.image_id }}
+      ROOT_PASSWORD: ${{ inputs.root_password }}
+      NODE_MAJOR: ${{ inputs.node_major }}
+      PYTHON_VERSION: ${{ inputs.python_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          chmod +x ./build-pve-cloud-image.sh
+          ./build-pve-cloud-image.sh
+
+      - name: Show output files
+        run: |
+          ls -lh "${WORKDIR}"
+          cat "${WORKDIR}"/*.sha256
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            ${{ env.WORKDIR }}/*.qcow2
+            ${{ env.WORKDIR }}/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    if: ${{ inputs.publish_release }}
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate release metadata
+        id: meta
+        run: |
+          release_date="$(TZ=Asia/Shanghai date +'%Y.%m.%d')"
+          echo "release_date=${release_date}" >> "${GITHUB_OUTPUT}"
+          echo "release_tag=pve-cloud-templates-${release_date}" >> "${GITHUB_OUTPUT}"
+          echo "release_name=PVE Cloud Templates ${release_date}" >> "${GITHUB_OUTPUT}"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Show release files
+        run: |
+          find dist -maxdepth 1 -type f -print -exec ls -lh {} \;
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.release_tag }}
+          name: ${{ steps.meta.outputs.release_name }}
+          body: |
+            PVE Cloud Templates 自动构建版本。
+
+            构建日期：${{ steps.meta.outputs.release_date }}
+
+            包含镜像：
+            - Debian 12 genericcloud amd64
+            - Debian 13 genericcloud amd64
+            - Ubuntu 22.04 LTS cloudimg amd64
+            - Ubuntu 24.04 LTS cloudimg amd64
+
+            集成内容：
+            - 常用运维、网络排障、性能观察、开发工具
+            - Docker CE 官方 stable 仓库版本
+            - Node.js ${{ inputs.node_major }}.x LTS
+            - 保留系统 Python 3，并额外提供 Python ${{ inputs.python_version }}
+
+            默认登录：
+            - 用户：root
+            - 密码：${{ inputs.root_password }}
+
+            安全提醒：公开模板包含默认 root 密码，首次启动后请立即修改密码，或使用 cloud-init 注入自己的用户和 SSH 公钥。
+          files: |
+            dist/*.qcow2
+            dist/*.sha256
