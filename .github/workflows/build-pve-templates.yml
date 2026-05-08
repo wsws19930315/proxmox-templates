@@ -68,7 +68,7 @@ jobs:
       - name: Check libguestfs backend
         run: |
           echo "LIBGUESTFS_BACKEND=${LIBGUESTFS_BACKEND}"
-          libguestfs-test-tool
+          sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" libguestfs-test-tool
 
       - name: Build image
         run: |

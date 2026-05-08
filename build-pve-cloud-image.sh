@@ -121,7 +121,7 @@ cp -f "${SRC_IMAGE}" "${WORK_IMAGE}"
 # -----------------------------
 echo "[4/8] 开始定制镜像..."
 
-sudo virt-customize -a "${WORK_IMAGE}" \
+sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-customize -a "${WORK_IMAGE}" \
   --memsize 4096 \
   --smp 2 \
   \
@@ -261,7 +261,7 @@ qemu-img info "${WORK_IMAGE}"
 echo "[6/8] 压缩镜像..."
 
 rm -f "${FINAL_IMAGE}"
-sudo virt-sparsify --compress "${WORK_IMAGE}" "${FINAL_IMAGE}"
+sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-sparsify --compress "${WORK_IMAGE}" "${FINAL_IMAGE}"
 
 # 修正文件权限，方便普通用户下载或 scp
 sudo chown "$(id -u):$(id -g)" "${FINAL_IMAGE}"

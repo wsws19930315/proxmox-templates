@@ -33,7 +33,7 @@ GitHub Actions 会一次性构建 4 个 amd64 镜像：
 
 其中 `qemu-guest-agent` 会在镜像内安装并启用，方便 PVE 读取虚拟机 IP、执行 guest 命令和做更友好的关机操作。`spice-vdagent` 也会安装，使用 SPICE 控制台时可改善剪贴板、分辨率等桌面交互体验。
 
-脚本会默认设置 `LIBGUESTFS_BACKEND=direct`。这样在 GitHub Actions 这类受限环境里，`virt-customize` 会直接启动 qemu appliance，避免默认后端触发 `passt` / libvirt 相关限制。
+脚本会默认设置 `LIBGUESTFS_BACKEND=direct`，并在执行 `virt-customize`、`virt-sparsify` 时通过 `sudo env` 显式传入。这样在 GitHub Actions 这类受限环境里，libguestfs 会直接启动 qemu appliance，避免默认后端触发 `passt` / libvirt 相关限制。
 
 ## 本地构建
 
