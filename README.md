@@ -38,32 +38,6 @@ SSH：22
 
 ## 在 PVE 上直接使用 Release 镜像
 
-下面以 Debian 13 为例。你可以把 `IMAGE` 换成上表里的其他文件名。
-
-```bash
-mkdir -p /root/cloud-image
-cd /root/cloud-image
-
-RELEASE_TAG="pve-cloud-templates-2026.05.08"
-BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
-IMAGE="debian-13-genericcloud-amd64-pve-custom.qcow2"
-
-wget -O "${IMAGE}" "${BASE_URL}/${IMAGE}"
-wget -O "${IMAGE}.sha256" "${BASE_URL}/${IMAGE}.sha256"
-awk -v image="${IMAGE}" '{print $1 "  " image}' "${IMAGE}.sha256" | sha256sum -c -
-```
-
-后续如果发布了新版本，只需要把 `RELEASE_TAG` 改成 Releases 页面里的新标签。
-
-如果你只想下载单个文件，也可以直接用 Release 附件链接，例如：
-
-```bash
-wget -O debian-13-genericcloud-amd64-pve-custom.qcow2 \
-  https://github.com/vbskycn/proxmox-templates/releases/download/pve-cloud-templates-2026.05.08/debian-13-genericcloud-amd64-pve-custom.qcow2
-```
-
-## 创建 PVE 模板
-
 先确认存储名：
 
 ```bash
@@ -72,13 +46,111 @@ pvesm status
 
 默认安装通常是 `local-lvm`。如果你的存储名不同，把下面命令里的 `local-lvm` 替换成实际存储名。
 
-下面以 Debian 13 为例创建模板 VMID `9013`：
+后续如果发布了新版本，只需要把示例里的 `RELEASE_TAG` 改成 Releases 页面里的新标签。
+
+### Debian 12 模板
+
+下面示例会创建 VMID `9012`，模板名 `debian-12-dev-template`。
 
 ```bash
+# -----------------------------
+# 1. 基础变量
+# -----------------------------
+
+# GitHub Release 标签。后续有新版本时，只需要改这里。
+RELEASE_TAG="pve-cloud-templates-2026.05.08"
+
+# Release 下载基础地址。
+BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
+
+# PVE 模板 VMID，建议 9000 段专门留给模板。
+VMID=9012
+
+# PVE 存储名。默认安装通常是 local-lvm，如不同请改成 pvesm status 看到的存储名。
+STORAGE="local-lvm"
+
+# 模板名称。
+NAME="debian-12-dev-template"
+
+# 镜像文件名。
+IMAGE="debian-12-genericcloud-amd64-pve-custom.qcow2"
+
+# 镜像保存目录。
+IMAGE_DIR="/root/cloud-image"
+
+# -----------------------------
+# 2. 下载镜像和校验文件
+# -----------------------------
+
+mkdir -p "${IMAGE_DIR}"
+cd "${IMAGE_DIR}"
+
+wget -O "${IMAGE}" "${BASE_URL}/${IMAGE}"
+wget -O "${IMAGE}.sha256" "${BASE_URL}/${IMAGE}.sha256"
+
+# 校验 SHA256。这里兼容旧版本 sha256 文件里带绝对路径的情况。
+awk -v image="${IMAGE}" '{print $1 "  " image}' "${IMAGE}.sha256" | sha256sum -c -
+
+# -----------------------------
+# 3. 创建 PVE 模板虚拟机
+# -----------------------------
+
+# 创建一个空 VM，后面把 cloud image 导入为系统盘。
+qm create "${VMID}" \
+  --machine q35 \
+  --cpu cputype=host \
+  --name "${NAME}" \
+  --scsi2 "${STORAGE}:cloudinit" \
+  --serial0 socket \
+  --vga serial0 \
+  --scsihw virtio-scsi-single \
+  --net0 virtio,bridge=vmbr0 \
+  --agent 1 \
+  --ostype l26 \
+  --memory 2048 \
+  --cores 2
+
+# 导入 qcow2 镜像到 PVE 存储。
+qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
+
+# 把导入后的磁盘挂到 scsi0，并开启 discard/ssd 标记。
+qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
+
+# 设置从 scsi0 启动。
+qm set "${VMID}" --boot order=scsi0
+
+# Cloud-init 默认使用 DHCP 获取 IP。
+qm set "${VMID}" --ipconfig0 ip=dhcp
+
+# Cloud-init 默认 root 用户和密码。
+qm set "${VMID}" --ciuser root
+qm set "${VMID}" --cipassword "password"
+
+# 如果需要 SSH 公钥登录，可以取消下一行注释，并确认文件存在。
+# qm set "${VMID}" --sshkeys ~/.ssh/authorized_keys
+
+# 转换成模板。
+qm template "${VMID}"
+```
+
+如果你的 PVE 存储类型不同，导入后的磁盘名可能和 `vm-${VMID}-disk-0` 不一致。可以先执行 `qm config "${VMID}"` 查看 `unused0` 对应的磁盘名，再替换 `--scsi0` 后面的磁盘路径。
+
+### Debian 13 模板
+
+```bash
+RELEASE_TAG="pve-cloud-templates-2026.05.08"
+BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
 VMID=9013
 STORAGE="local-lvm"
 NAME="debian-13-dev-template"
-IMAGE="/root/cloud-image/debian-13-genericcloud-amd64-pve-custom.qcow2"
+IMAGE="debian-13-genericcloud-amd64-pve-custom.qcow2"
+IMAGE_DIR="/root/cloud-image"
+
+mkdir -p "${IMAGE_DIR}"
+cd "${IMAGE_DIR}"
+wget -O "${IMAGE}" "${BASE_URL}/${IMAGE}"
+wget -O "${IMAGE}.sha256" "${BASE_URL}/${IMAGE}.sha256"
+awk -v image="${IMAGE}" '{print $1 "  " image}' "${IMAGE}.sha256" | sha256sum -c -
 
 qm create "${VMID}" \
   --machine q35 \
@@ -94,7 +166,7 @@ qm create "${VMID}" \
   --memory 2048 \
   --cores 2
 
-qm importdisk "${VMID}" "${IMAGE}" "${STORAGE}"
+qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
 qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
 qm set "${VMID}" --boot order=scsi0
 qm set "${VMID}" --ipconfig0 ip=dhcp
@@ -103,12 +175,84 @@ qm set "${VMID}" --cipassword "password"
 qm template "${VMID}"
 ```
 
-如果你的 PVE 存储类型不同，导入后的磁盘名可能和 `vm-${VMID}-disk-0` 不一致。可以先执行 `qm config "${VMID}"` 查看 `unused0` 对应的磁盘名，再替换 `--scsi0` 后面的磁盘路径。
-
-如需使用 SSH 公钥登录，可以在转模板前加：
+### Ubuntu 22.04 模板
 
 ```bash
-qm set "${VMID}" --sshkeys ~/.ssh/authorized_keys
+RELEASE_TAG="pve-cloud-templates-2026.05.08"
+BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
+VMID=9022
+STORAGE="local-lvm"
+NAME="ubuntu-22.04-dev-template"
+IMAGE="ubuntu-22.04-server-cloudimg-amd64-pve-custom.qcow2"
+IMAGE_DIR="/root/cloud-image"
+
+mkdir -p "${IMAGE_DIR}"
+cd "${IMAGE_DIR}"
+wget -O "${IMAGE}" "${BASE_URL}/${IMAGE}"
+wget -O "${IMAGE}.sha256" "${BASE_URL}/${IMAGE}.sha256"
+awk -v image="${IMAGE}" '{print $1 "  " image}' "${IMAGE}.sha256" | sha256sum -c -
+
+qm create "${VMID}" \
+  --machine q35 \
+  --cpu cputype=host \
+  --name "${NAME}" \
+  --scsi2 "${STORAGE}:cloudinit" \
+  --serial0 socket \
+  --vga serial0 \
+  --scsihw virtio-scsi-single \
+  --net0 virtio,bridge=vmbr0 \
+  --agent 1 \
+  --ostype l26 \
+  --memory 2048 \
+  --cores 2
+
+qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
+qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
+qm set "${VMID}" --boot order=scsi0
+qm set "${VMID}" --ipconfig0 ip=dhcp
+qm set "${VMID}" --ciuser root
+qm set "${VMID}" --cipassword "password"
+qm template "${VMID}"
+```
+
+### Ubuntu 24.04 模板
+
+```bash
+RELEASE_TAG="pve-cloud-templates-2026.05.08"
+BASE_URL="https://github.com/vbskycn/proxmox-templates/releases/download/${RELEASE_TAG}"
+VMID=9024
+STORAGE="local-lvm"
+NAME="ubuntu-24.04-dev-template"
+IMAGE="ubuntu-24.04-server-cloudimg-amd64-pve-custom.qcow2"
+IMAGE_DIR="/root/cloud-image"
+
+mkdir -p "${IMAGE_DIR}"
+cd "${IMAGE_DIR}"
+wget -O "${IMAGE}" "${BASE_URL}/${IMAGE}"
+wget -O "${IMAGE}.sha256" "${BASE_URL}/${IMAGE}.sha256"
+awk -v image="${IMAGE}" '{print $1 "  " image}' "${IMAGE}.sha256" | sha256sum -c -
+
+qm create "${VMID}" \
+  --machine q35 \
+  --cpu cputype=host \
+  --name "${NAME}" \
+  --scsi2 "${STORAGE}:cloudinit" \
+  --serial0 socket \
+  --vga serial0 \
+  --scsihw virtio-scsi-single \
+  --net0 virtio,bridge=vmbr0 \
+  --agent 1 \
+  --ostype l26 \
+  --memory 2048 \
+  --cores 2
+
+qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
+qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
+qm set "${VMID}" --boot order=scsi0
+qm set "${VMID}" --ipconfig0 ip=dhcp
+qm set "${VMID}" --ciuser root
+qm set "${VMID}" --cipassword "password"
+qm template "${VMID}"
 ```
 
 建议 VMID 规划：
