@@ -21,8 +21,7 @@ GitHub Actions 会一次性构建 4 个 amd64 镜像：
 - 性能观察：`htop`、`atop`、`iotop`、`iftop`、`nload`、`sysstat`
 - Shell 辅助：`tmux`、`screen`、`bash-completion`、`less`、`most`、`tree`、`jq`
 - SSH / APT：`sshpass`、`ca-certificates`、`gnupg`、`lsb-release`、`apt-transport-https`
-- Python 基础：`python3`、`python3-pip`、`python3-venv`、`python3-dev`、`pipx`
-- 编译工具：`gcc`、`g++`、`make`、`cmake`、`pkg-config`、`build-essential`
+- Python 基础：`python3`、`python3-pip`、`python3-venv`、`pipx`
 - PVE 增强：`qemu-guest-agent`、`spice-vdagent`、`cloud-init`
 
 运行时版本策略：
@@ -30,6 +29,8 @@ GitHub Actions 会一次性构建 4 个 amd64 镜像：
 - Docker：Docker CE 官方 stable APT 仓库版本
 - Node.js：NodeSource 24.x LTS
 - Python：保留系统 `python3`，额外编译安装 Python 3.14.4 到 `/opt/python-3.14.4`
+
+默认模板偏轻量：`gcc`、`g++`、`make`、`cmake`、`pkg-config`、`build-essential` 和 Python 编译依赖只在构建 Python 3.14 时临时安装，构建完成后会清理。如果你希望最终模板保留完整编译环境，可以设置 `KEEP_BUILD_TOOLS=true`。
 
 其中 `qemu-guest-agent` 会在镜像内安装并启用，方便 PVE 读取虚拟机 IP、执行 guest 命令和做更友好的关机操作。`spice-vdagent` 也会安装，使用 SPICE 控制台时可改善剪贴板、分辨率等桌面交互体验。
 
@@ -58,6 +59,7 @@ WORKDIR=/tmp/pve-cloud-build/ubuntu2404 \
 ROOT_PASSWORD='请改成自己的密码' \
 NODE_MAJOR=24 \
 PYTHON_VERSION=3.14.4 \
+IMAGE_DISK_SIZE=12G \
 ./build-pve-cloud-image.sh
 ```
 
@@ -68,6 +70,20 @@ PYTHON_VERSION=3.14.4 \
 - `ubuntu2204`
 - `ubuntu2404`
 
+默认会用 `virt-resize` 把工作镜像根分区扩容到 `12G`，避免安装工具和额外编译 Python 时出现 `No space left on device`。如需调整，可设置 `IMAGE_DISK_SIZE`；默认根分区是 `/dev/sda1`，特殊镜像可通过 `ROOT_PARTITION` 覆盖。
+
+默认不保留完整编译环境，以降低镜像体积。如需保留，可设置：
+
+```bash
+KEEP_BUILD_TOOLS=true ./build-pve-cloud-image.sh
+```
+
+脚本默认会清理 Ubuntu cloud image 中的 `snapd`，因为它不在模板工具清单里，且完整升级时占用空间较大。如需保留，可设置：
+
+```bash
+REMOVE_SNAPD=false ./build-pve-cloud-image.sh
+```
+
 ## GitHub Actions 一次性构建并发布
 
 进入 GitHub 仓库页面：
@@ -77,6 +93,10 @@ PYTHON_VERSION=3.14.4 \
 3. 点击 `Run workflow`
 4. 直接点击运行即可；默认 root 密码是 `password`
 5. 保持 `publish_release=true`
+
+如果你想生成带完整编译环境的开发模板，可以勾选 `keep_build_tools`。默认不勾选，镜像会更小。
+
+工作流默认会把镜像虚拟磁盘扩容到 `12G`，根分区按官方 cloud image 常见布局使用 `/dev/sda1`，清理 `snapd` / PackageKit / 文档缓存，并在编译 Python 后清理临时编译工具。
 
 构建完成后，4 个镜像会同时上传到：
 
@@ -92,6 +112,8 @@ Release 附件包含每个镜像的：
 
 - `.qcow2`
 - `.qcow2.sha256`
+
+GitHub Release 单个附件必须小于 2 GiB。工作流会在发布前检查 `.qcow2` 文件大小；如果超过限制，需要改用对象存储，或把发布格式改成分卷压缩包。
 
 ## 导入到 PVE
 
@@ -197,10 +219,10 @@ qm clone 9000 101 \
   --storage local-lvm
 ```
 
-扩容到 30G。当前模板默认磁盘大约 3G 左右，示例增加 27G：
+扩容到 30G。当前模板默认虚拟磁盘为 12G，示例增加 18G：
 
 ```bash
-qm resize 101 scsi0 +27G
+qm resize 101 scsi0 +18G
 ```
 
 启动：

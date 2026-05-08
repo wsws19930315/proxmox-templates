@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # PVE Cloud Image 定制脚本
-# 运行环境：Ubuntu 22.04 / 24.04 / GitHub Actions ubuntu-latest
+# 运行环境：Ubuntu 22.04 / 24.04，本仓库 GitHub Actions 固定 ubuntu-22.04
 #
 # 支持镜像：
 # - debian12
@@ -11,7 +11,7 @@
 #
 # 功能：
 # 1. 基于官方 Cloud Image
-# 2. 安装常用运维、网络排障、性能观察、开发工具
+# 2. 安装常用运维、网络排障、性能观察工具
 # 3. 安装 Docker CE 官方 stable 仓库版本
 # 4. 安装 Node.js 24.x LTS
 # 5. 额外编译安装 Python 3.14，不替换系统 python3
@@ -32,6 +32,11 @@ TIMEZONE="${TIMEZONE:-Asia/Shanghai}"
 NODE_MAJOR="${NODE_MAJOR:-24}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.14.4}"
 PYTHON_SHORT_VERSION="${PYTHON_VERSION%.*}"
+IMAGE_DISK_SIZE="${IMAGE_DISK_SIZE:-12G}"
+ROOT_PARTITION="${ROOT_PARTITION:-/dev/sda1}"
+REMOVE_SNAPD="${REMOVE_SNAPD:-true}"
+KEEP_BUILD_TOOLS="${KEEP_BUILD_TOOLS:-false}"
+CLEAN_DOCS="${CLEAN_DOCS:-true}"
 
 # GitHub Actions 等受限环境下，libguestfs 默认后端可能触发 passt/libvirt 限制。
 # 显式使用 direct 后端，让 virt-customize 直接启动 qemu appliance。
@@ -78,6 +83,11 @@ echo "最终镜像：${FINAL_IMAGE}"
 echo "root 密码：${ROOT_PASSWORD}"
 echo "Node.js：${NODE_MAJOR}.x LTS"
 echo "额外 Python：${PYTHON_VERSION}"
+echo "镜像虚拟磁盘：${IMAGE_DISK_SIZE}"
+echo "扩容根分区：${ROOT_PARTITION}"
+echo "移除 snapd：${REMOVE_SNAPD}"
+echo "保留编译工具：${KEEP_BUILD_TOOLS}"
+echo "清理文档缓存：${CLEAN_DOCS}"
 echo "libguestfs 后端：${LIBGUESTFS_BACKEND}"
 echo "============================================================"
 
@@ -113,8 +123,19 @@ else
   echo "原始镜像已存在，跳过下载：${SRC_IMAGE}"
 fi
 
-echo "复制工作镜像..."
-cp -f "${SRC_IMAGE}" "${WORK_IMAGE}"
+echo "创建并扩容工作镜像..."
+rm -f "${WORK_IMAGE}"
+qemu-img create -f qcow2 "${WORK_IMAGE}" "${IMAGE_DISK_SIZE}"
+echo "源镜像分区信息："
+sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-filesystems \
+  --long \
+  --parts \
+  --blkdevs \
+  -a "${SRC_IMAGE}"
+sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-resize \
+  --expand "${ROOT_PARTITION}" \
+  "${SRC_IMAGE}" \
+  "${WORK_IMAGE}"
 
 # -----------------------------
 # 4. 定制镜像
@@ -156,7 +177,15 @@ chpasswd:
   \
   --run-command "apt-get update" \
   \
+  --write "/etc/apt/apt.conf.d/99-template-no-recommends:APT::Install-Recommends \"false\";
+APT::Install-Suggests \"false\";
+" \
+  \
   --run-command "DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg" \
+  \
+  --run-command "if [ '${REMOVE_SNAPD}' = 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y purge snapd packagekit packagekit-tools || true; rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd; fi" \
+  \
+  --run-command "apt-get -y clean || true" \
   \
   --run-command "install -m 0755 -d /etc/apt/keyrings" \
   \
@@ -170,7 +199,7 @@ chpasswd:
   \
   --run-command "echo 'iperf3 iperf3/start_daemon boolean false' | debconf-set-selections || true" \
   \
-  --update \
+  --run-command "apt-get update" \
   \
   --install "sudo,openssh-server,qemu-guest-agent,spice-vdagent,cloud-init" \
   \
@@ -186,7 +215,7 @@ chpasswd:
   \
   --install "sshpass,ca-certificates,gnupg,lsb-release,apt-transport-https" \
   \
-  --install "python3,python3-pip,python3-venv,python3-dev,pipx" \
+  --install "python3,python3-pip,python3-venv,pipx" \
   \
   --install "gcc,g++,make,cmake,pkg-config,build-essential,libssl-dev,zlib1g-dev,libbz2-dev,libreadline-dev,libsqlite3-dev,libffi-dev,liblzma-dev,uuid-dev" \
   \
@@ -216,6 +245,8 @@ chpasswd:
   \
   --run-command "rm -rf /usr/local/src/Python-${PYTHON_VERSION} /usr/local/src/Python-${PYTHON_VERSION}.tgz" \
   \
+  --run-command "if [ '${KEEP_BUILD_TOOLS}' != 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y purge gcc g++ make cmake pkg-config build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev uuid-dev || true; apt-get -y autoremove --purge || true; fi" \
+  \
   --run-command "node --version" \
   \
   --run-command "docker --version" \
@@ -239,6 +270,8 @@ chpasswd:
   --run-command "apt-get -y autoremove --purge || true" \
   \
   --run-command "apt-get -y clean || true" \
+  \
+  --run-command "if [ '${CLEAN_DOCS}' = 'true' ]; then rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* /tmp/* /var/tmp/*; fi" \
   \
   --delete "/var/log/*.log" \
   \

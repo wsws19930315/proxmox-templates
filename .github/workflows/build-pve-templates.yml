@@ -20,6 +20,11 @@ on:
         required: true
         type: boolean
         default: true
+      keep_build_tools:
+        description: "是否保留完整编译环境，适合开发模板"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -51,6 +56,11 @@ jobs:
       ROOT_PASSWORD: ${{ inputs.root_password }}
       NODE_MAJOR: ${{ inputs.node_major }}
       PYTHON_VERSION: ${{ inputs.python_version }}
+      IMAGE_DISK_SIZE: "12G"
+      ROOT_PARTITION: "/dev/sda1"
+      REMOVE_SNAPD: "true"
+      KEEP_BUILD_TOOLS: ${{ inputs.keep_build_tools }}
+      CLEAN_DOCS: "true"
       LIBGUESTFS_BACKEND: direct
 
     steps:
@@ -96,7 +106,7 @@ jobs:
     name: Publish GitHub Release
     if: ${{ inputs.publish_release }}
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Generate release metadata
@@ -116,6 +126,19 @@ jobs:
       - name: Show release files
         run: |
           find dist -maxdepth 1 -type f -print -exec ls -lh {} \;
+
+      - name: Check GitHub Release asset size limit
+        run: |
+          max_bytes=$((2 * 1024 * 1024 * 1024))
+          failed=0
+          for file in dist/*.qcow2; do
+            size="$(stat -c '%s' "${file}")"
+            if [ "${size}" -ge "${max_bytes}" ]; then
+              echo "::error file=${file}::GitHub Release 单个附件必须小于 2 GiB，当前文件大小为 ${size} bytes。"
+              failed=1
+            fi
+          done
+          exit "${failed}"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -138,6 +161,7 @@ jobs:
             - Docker CE 官方 stable 仓库版本
             - Node.js ${{ inputs.node_major }}.x LTS
             - 保留系统 Python 3，并额外提供 Python ${{ inputs.python_version }}
+            - 保留完整编译环境：${{ inputs.keep_build_tools }}
 
             默认登录：
             - 用户：root
