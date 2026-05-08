@@ -27,7 +27,9 @@ permissions:
 jobs:
   build:
     name: Build ${{ matrix.image_id }}
-    runs-on: ubuntu-latest
+    # 固定 Ubuntu 22.04 runner：ubuntu-latest 当前可能是 24.04，
+    # 其 QEMU/libguestfs 网络栈会触发 passt，在 GitHub Actions 环境中不稳定。
+    runs-on: ubuntu-22.04
     timeout-minutes: 180
 
     strategy:
