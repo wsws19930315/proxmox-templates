@@ -123,19 +123,16 @@ else
   echo "原始镜像已存在，跳过下载：${SRC_IMAGE}"
 fi
 
-echo "创建并扩容工作镜像..."
+echo "复制并扩大工作镜像虚拟磁盘..."
 rm -f "${WORK_IMAGE}"
-qemu-img create -f qcow2 "${WORK_IMAGE}" "${IMAGE_DISK_SIZE}"
+cp -f "${SRC_IMAGE}" "${WORK_IMAGE}"
+qemu-img resize "${WORK_IMAGE}" "${IMAGE_DISK_SIZE}"
 echo "源镜像分区信息："
 sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-filesystems \
   --long \
   --parts \
   --blkdevs \
-  -a "${SRC_IMAGE}"
-sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-resize \
-  --expand "${ROOT_PARTITION}" \
-  "${SRC_IMAGE}" \
-  "${WORK_IMAGE}"
+  -a "${WORK_IMAGE}"
 
 # -----------------------------
 # 4. 定制镜像
@@ -169,19 +166,25 @@ chpasswd:
   \
   --append-line "/etc/default/grub:GRUB_DISABLE_OS_PROBER=true" \
   \
-  --run-command "update-grub || true" \
-  \
-  --run-command "sed -i 's|Types: deb deb-src|Types: deb|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true" \
-  \
-  --run-command "sed -i 's|generate_mirrorlists: true|generate_mirrorlists: false|g' /etc/cloud/cloud.cfg.d/01_debian_cloud.cfg 2>/dev/null || true" \
-  \
   --run-command "apt-get update" \
   \
   --write "/etc/apt/apt.conf.d/99-template-no-recommends:APT::Install-Recommends \"false\";
 APT::Install-Suggests \"false\";
 " \
   \
-  --run-command "DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg" \
+  --run-command "DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-guest-utils e2fsprogs ca-certificates curl gnupg" \
+  \
+  --run-command "growpart /dev/sda 1" \
+  \
+  --run-command "resize2fs '${ROOT_PARTITION}'" \
+  \
+  --run-command "df -h /" \
+  \
+  --run-command "update-grub || true" \
+  \
+  --run-command "sed -i 's|Types: deb deb-src|Types: deb|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true" \
+  \
+  --run-command "sed -i 's|generate_mirrorlists: true|generate_mirrorlists: false|g' /etc/cloud/cloud.cfg.d/01_debian_cloud.cfg 2>/dev/null || true" \
   \
   --run-command "if [ '${REMOVE_SNAPD}' = 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y purge snapd packagekit packagekit-tools || true; rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd; fi" \
   \

@@ -70,7 +70,7 @@ IMAGE_DISK_SIZE=12G \
 - `ubuntu2204`
 - `ubuntu2404`
 
-默认会用 `virt-resize` 把工作镜像根分区扩容到 `12G`，避免安装工具和额外编译 Python 时出现 `No space left on device`。如需调整，可设置 `IMAGE_DISK_SIZE`；默认根分区是 `/dev/sda1`，特殊镜像可通过 `ROOT_PARTITION` 覆盖。
+默认会把工作镜像虚拟磁盘扩容到 `12G`，并在镜像内部用 `growpart` + `resize2fs` 扩展根分区，避免安装工具和额外编译 Python 时出现 `No space left on device`。如需调整，可设置 `IMAGE_DISK_SIZE`；默认根分区是 `/dev/sda1`，特殊镜像可通过 `ROOT_PARTITION` 覆盖。
 
 默认不保留完整编译环境，以降低镜像体积。如需保留，可设置：
 
