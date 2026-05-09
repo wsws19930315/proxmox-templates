@@ -26,6 +26,8 @@
 
 默认模板偏轻量：编译 Python 3.14 所需的 `gcc`、`g++`、`make`、`cmake`、`build-essential` 等工具会临时安装，构建结束后清理。运行工作流时勾选 `keep_build_tools` 可保留完整编译环境。
 
+默认构建时会执行系统更新，尽量减少首次登录后提示大量可升级安全更新。如果某次上游更新导致构建失败，可以在工作流里取消勾选 `apply_updates` 后重新构建。
+
 默认 root 登录：
 
 ```text
@@ -377,6 +379,7 @@ python3.14 --version
 | `python_version` | `3.14.4` | 额外编译安装的 Python 版本 |
 | `publish_release` | `true` | 是否发布到 GitHub Releases |
 | `keep_build_tools` | `false` | 是否保留完整编译环境 |
+| `apply_updates` | `true` | 是否在构建时执行系统更新 |
 
 如果 Release 发布时报权限错误，到 fork 仓库检查：
 
@@ -409,6 +412,7 @@ NODE_MAJOR=24 \
 PYTHON_VERSION=3.14.4 \
 IMAGE_DISK_SIZE=8G \
 KEEP_BUILD_TOOLS=false \
+APPLY_UPDATES=true \
 ./build-pve-cloud-image.sh
 ```
 
@@ -417,6 +421,7 @@ KEEP_BUILD_TOOLS=false \
 - 默认虚拟磁盘为 `8G`
 - 默认根分区为 `/dev/sda1`
 - 默认清理 `snapd`、PackageKit、文档缓存和构建临时文件
+- 默认执行系统更新，降低首次登录后的可升级安全更新提示
 - GitHub Actions 固定使用 `ubuntu-22.04` runner，避免 `ubuntu-latest` 上 libguestfs / passt 网络栈差异
 - 工作流只上传最终 `.qcow2` 和 `.qcow2.sha256`，不会上传 `*-src.qcow2`、`*-work.qcow2`
 - GitHub Release 单个附件必须小于 2 GiB，工作流会在发布前检查

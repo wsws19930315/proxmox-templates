@@ -25,6 +25,11 @@ on:
         required: true
         type: boolean
         default: false
+      apply_updates:
+        description: "是否在构建时执行系统更新"
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -60,6 +65,7 @@ jobs:
       ROOT_PARTITION: "/dev/sda1"
       REMOVE_SNAPD: "true"
       KEEP_BUILD_TOOLS: ${{ inputs.keep_build_tools }}
+      APPLY_UPDATES: ${{ inputs.apply_updates }}
       CLEAN_DOCS: "true"
       LIBGUESTFS_BACKEND: direct
 
@@ -177,6 +183,7 @@ jobs:
             - Node.js ${{ inputs.node_major }}.x LTS
             - 保留系统 Python 3，并额外提供 Python ${{ inputs.python_version }}
             - 保留完整编译环境：${{ inputs.keep_build_tools }}
+            - 构建时应用系统更新：${{ inputs.apply_updates }}
 
             默认登录：
             - 用户：root

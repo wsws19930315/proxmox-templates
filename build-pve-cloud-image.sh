@@ -37,6 +37,7 @@ ROOT_PARTITION="${ROOT_PARTITION:-/dev/sda1}"
 REMOVE_SNAPD="${REMOVE_SNAPD:-true}"
 KEEP_BUILD_TOOLS="${KEEP_BUILD_TOOLS:-false}"
 CLEAN_DOCS="${CLEAN_DOCS:-true}"
+APPLY_UPDATES="${APPLY_UPDATES:-true}"
 
 # GitHub Actions 等受限环境下，libguestfs 默认后端可能触发 passt/libvirt 限制。
 # 显式使用 direct 后端，让 virt-customize 直接启动 qemu appliance。
@@ -88,6 +89,7 @@ echo "扩容根分区：${ROOT_PARTITION}"
 echo "移除 snapd：${REMOVE_SNAPD}"
 echo "保留编译工具：${KEEP_BUILD_TOOLS}"
 echo "清理文档缓存：${CLEAN_DOCS}"
+echo "应用系统更新：${APPLY_UPDATES}"
 echo "libguestfs 后端：${LIBGUESTFS_BACKEND}"
 echo "============================================================"
 
@@ -180,6 +182,8 @@ APT::Install-Suggests \"false\";
   \
   --run-command "df -h /" \
   \
+  --run-command "if [ '${APPLY_UPDATES}' = 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y full-upgrade; fi" \
+  \
   --run-command "update-grub || true" \
   \
   --run-command "sed -i 's|Types: deb deb-src|Types: deb|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true" \
@@ -267,6 +271,8 @@ APT::Install-Suggests \"false\";
   --run-command "systemctl enable serial-getty@ttyS1.service || true" \
   \
   --run-command "mkdir -p /root/.ssh && chmod 700 /root/.ssh" \
+  \
+  --run-command "touch /root/.Xauthority && chmod 600 /root/.Xauthority" \
   \
   --run-command "echo 'nameserver 223.5.5.5' > /etc/resolv.conf || true" \
   \
