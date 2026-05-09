@@ -22,9 +22,9 @@
 - Shell 辅助：`tmux`、`screen`、`bash-completion`、`less`、`most`、`tree`、`jq`
 - Docker：Docker CE 官方 stable APT 源
 - Node.js：NodeSource 24.x LTS
-- Python：保留系统 `python3`，额外安装 `/usr/local/bin/python3.14`
+- Python：保留系统 `python3`，默认额外安装 `/usr/local/bin/python3.14`
 
-默认模板偏轻量：编译 Python 3.14 所需的 `gcc`、`g++`、`make`、`cmake`、`build-essential` 等工具会临时安装，构建结束后清理。运行工作流时勾选 `keep_build_tools` 可保留完整编译环境。
+默认模板偏轻量：额外 Python 是可选项。启用额外 Python 时，编译 Python 3.14 所需的 `gcc`、`g++`、`make`、`cmake`、`build-essential` 等工具会临时安装，构建结束后清理。运行工作流时勾选 `keep_build_tools` 可保留这批编译环境；如果关闭 `install_extra_python`，则不会额外安装这批编译工具。
 
 默认构建时会执行系统更新，尽量减少首次登录后提示大量可升级安全更新。如果某次上游更新导致构建失败，可以在工作流里取消勾选 `apply_updates` 后重新构建。
 
@@ -355,7 +355,7 @@ systemctl status qemu-guest-agent --no-pager
 docker --version
 node --version
 python3 --version
-python3.14 --version
+command -v python3.14 >/dev/null && python3.14 --version || true
 ```
 
 ## Fork 后自己构建
@@ -377,6 +377,7 @@ python3.14 --version
 | `root_password` | `password` | 镜像默认 root 密码 |
 | `node_major` | `24` | Node.js LTS 主版本 |
 | `python_version` | `3.14.4` | 额外编译安装的 Python 版本 |
+| `install_extra_python` | `true` | 是否额外编译安装 Python |
 | `publish_release` | `true` | 是否发布到 GitHub Releases |
 | `keep_build_tools` | `false` | 是否保留完整编译环境 |
 | `apply_updates` | `true` | 是否在构建时执行系统更新 |
@@ -410,6 +411,7 @@ WORKDIR=/tmp/pve-cloud-build/ubuntu2404 \
 ROOT_PASSWORD='password' \
 NODE_MAJOR=24 \
 PYTHON_VERSION=3.14.4 \
+INSTALL_EXTRA_PYTHON=true \
 IMAGE_DISK_SIZE=8G \
 KEEP_BUILD_TOOLS=false \
 APPLY_UPDATES=true \

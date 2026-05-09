@@ -14,7 +14,7 @@
 # 2. 安装常用运维、网络排障、性能观察工具
 # 3. 安装 Docker CE 官方 stable 仓库版本
 # 4. 安装 Node.js 24.x LTS
-# 5. 额外编译安装 Python 3.14，不替换系统 python3
+# 5. 可选额外编译安装 Python 3.14，不替换系统 python3
 # 6. 启用 SSH、cloud-init、qemu-guest-agent
 # 7. 清理缓存并压缩 qcow2 镜像
 # ============================================================
@@ -32,6 +32,7 @@ TIMEZONE="${TIMEZONE:-Asia/Shanghai}"
 NODE_MAJOR="${NODE_MAJOR:-24}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.14.4}"
 PYTHON_SHORT_VERSION="${PYTHON_VERSION%.*}"
+INSTALL_EXTRA_PYTHON="${INSTALL_EXTRA_PYTHON:-true}"
 IMAGE_DISK_SIZE="${IMAGE_DISK_SIZE:-8G}"
 ROOT_PARTITION="${ROOT_PARTITION:-/dev/sda1}"
 REMOVE_SNAPD="${REMOVE_SNAPD:-true}"
@@ -83,7 +84,8 @@ echo "工作目录：${WORKDIR}"
 echo "最终镜像：${FINAL_IMAGE}"
 echo "root 密码：${ROOT_PASSWORD}"
 echo "Node.js：${NODE_MAJOR}.x LTS"
-echo "额外 Python：${PYTHON_VERSION}"
+echo "安装额外 Python：${INSTALL_EXTRA_PYTHON}"
+echo "额外 Python 版本：${PYTHON_VERSION}"
 echo "镜像虚拟磁盘：${IMAGE_DISK_SIZE}"
 echo "扩容根分区：${ROOT_PARTITION}"
 echo "移除 snapd：${REMOVE_SNAPD}"
@@ -224,7 +226,7 @@ APT::Install-Suggests \"false\";
   \
   --install "python3,python3-pip,python3-venv,pipx" \
   \
-  --install "gcc,g++,make,cmake,pkg-config,build-essential,libssl-dev,zlib1g-dev,libbz2-dev,libreadline-dev,libsqlite3-dev,libffi-dev,liblzma-dev,uuid-dev" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y gcc g++ make cmake pkg-config build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev uuid-dev; fi" \
   \
   --install "nodejs" \
   \
@@ -232,33 +234,33 @@ APT::Install-Suggests \"false\";
   \
   --install "zstd,bzip2,xz-utils" \
   \
-  --run-command "cd /usr/local/src && curl -fsSLO https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src && curl -fsSLO https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz; fi" \
   \
-  --run-command "cd /usr/local/src && tar -xzf Python-${PYTHON_VERSION}.tgz" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src && tar -xzf Python-${PYTHON_VERSION}.tgz; fi" \
   \
-  --run-command "cd /usr/local/src/Python-${PYTHON_VERSION} && ./configure --prefix=/opt/python-${PYTHON_VERSION} --enable-shared --with-ensurepip=install" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src/Python-${PYTHON_VERSION} && ./configure --prefix=/opt/python-${PYTHON_VERSION} --enable-shared --with-ensurepip=install; fi" \
   \
-  --run-command "cd /usr/local/src/Python-${PYTHON_VERSION} && make -j\$(nproc)" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src/Python-${PYTHON_VERSION} && make -j\$(nproc); fi" \
   \
-  --run-command "cd /usr/local/src/Python-${PYTHON_VERSION} && make altinstall" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src/Python-${PYTHON_VERSION} && make altinstall; fi" \
   \
-  --run-command "echo '/opt/python-${PYTHON_VERSION}/lib' > /etc/ld.so.conf.d/python-${PYTHON_SHORT_VERSION}.conf && ldconfig" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then echo '/opt/python-${PYTHON_VERSION}/lib' > /etc/ld.so.conf.d/python-${PYTHON_SHORT_VERSION}.conf && ldconfig; fi" \
   \
-  --run-command "ln -sf /opt/python-${PYTHON_VERSION}/bin/python${PYTHON_SHORT_VERSION} /usr/local/bin/python${PYTHON_SHORT_VERSION}" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then ln -sf /opt/python-${PYTHON_VERSION}/bin/python${PYTHON_SHORT_VERSION} /usr/local/bin/python${PYTHON_SHORT_VERSION}; fi" \
   \
-  --run-command "ln -sf /opt/python-${PYTHON_VERSION}/bin/pip${PYTHON_SHORT_VERSION} /usr/local/bin/pip${PYTHON_SHORT_VERSION}" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then ln -sf /opt/python-${PYTHON_VERSION}/bin/pip${PYTHON_SHORT_VERSION} /usr/local/bin/pip${PYTHON_SHORT_VERSION}; fi" \
   \
-  --run-command "/usr/local/bin/python${PYTHON_SHORT_VERSION} -m pip install --upgrade pip setuptools wheel" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then /usr/local/bin/python${PYTHON_SHORT_VERSION} -m pip install --upgrade pip setuptools wheel; fi" \
   \
   --run-command "rm -rf /usr/local/src/Python-${PYTHON_VERSION} /usr/local/src/Python-${PYTHON_VERSION}.tgz" \
   \
-  --run-command "if [ '${KEEP_BUILD_TOOLS}' != 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y purge gcc g++ make cmake pkg-config build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev uuid-dev || true; apt-get -y autoremove --purge || true; fi" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ] && [ '${KEEP_BUILD_TOOLS}' != 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y purge gcc g++ make cmake pkg-config build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev uuid-dev || true; apt-get -y autoremove --purge || true; fi" \
   \
   --run-command "node --version" \
   \
   --run-command "docker --version" \
   \
-  --run-command "/usr/local/bin/python${PYTHON_SHORT_VERSION} --version" \
+  --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then /usr/local/bin/python${PYTHON_SHORT_VERSION} --version; fi" \
   \
   --run-command "systemctl enable ssh || true" \
   \
@@ -331,6 +333,10 @@ echo "最终镜像路径：${FINAL_IMAGE}"
 echo "默认登录信息：root / ${ROOT_PASSWORD}"
 echo "SSH：22"
 echo "Node.js：${NODE_MAJOR}.x LTS"
-echo "额外 Python：/usr/local/bin/python${PYTHON_SHORT_VERSION}"
+if [ "${INSTALL_EXTRA_PYTHON}" = "true" ]; then
+  echo "额外 Python：/usr/local/bin/python${PYTHON_SHORT_VERSION}"
+else
+  echo "额外 Python：未安装"
+fi
 echo "SHA256：${FINAL_IMAGE}.sha256"
 echo "============================================================"
