@@ -354,6 +354,9 @@ qm clone 9013 101 \
 # qm set 101 --ipconfig0 ip=192.168.1.101/24,gw=192.168.1.1
 # qm set 101 --nameserver 223.5.5.5
 
+# 如需给这台克隆 VM 单独注入 root 密码，可在启动前取消下一行注释。
+# qm set 101 --cipassword "你的新密码"
+
 qm start 101
 ```
 
