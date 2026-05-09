@@ -149,6 +149,11 @@ qm set "${VMID}" --boot order=scsi0
 # Cloud-init 默认使用 DHCP 获取 IP。
 qm set "${VMID}" --ipconfig0 ip=dhcp
 
+# 如果希望模板默认使用固定 IP，可以注释上一行 DHCP，并取消下面两行注释。
+# 注意按你的网段修改 IP、网关和 DNS。
+# qm set "${VMID}" --ipconfig0 ip=192.168.1.212/24,gw=192.168.1.1
+# qm set "${VMID}" --nameserver 223.5.5.5
+
 # Cloud-init 默认 root 用户和密码。
 qm set "${VMID}" --ciuser root
 qm set "${VMID}" --cipassword "password"
@@ -205,6 +210,9 @@ qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
 qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
 qm set "${VMID}" --boot order=scsi0
 qm set "${VMID}" --ipconfig0 ip=dhcp
+# 如需模板默认固定 IP，可改用下面两行，并注释上一行 DHCP。
+# qm set "${VMID}" --ipconfig0 ip=192.168.1.213/24,gw=192.168.1.1
+# qm set "${VMID}" --nameserver 223.5.5.5
 qm set "${VMID}" --ciuser root
 qm set "${VMID}" --cipassword "password"
 qm template "${VMID}"
@@ -253,6 +261,9 @@ qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
 qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
 qm set "${VMID}" --boot order=scsi0
 qm set "${VMID}" --ipconfig0 ip=dhcp
+# 如需模板默认固定 IP，可改用下面两行，并注释上一行 DHCP。
+# qm set "${VMID}" --ipconfig0 ip=192.168.1.222/24,gw=192.168.1.1
+# qm set "${VMID}" --nameserver 223.5.5.5
 qm set "${VMID}" --ciuser root
 qm set "${VMID}" --cipassword "password"
 qm template "${VMID}"
@@ -301,6 +312,9 @@ qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
 qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
 qm set "${VMID}" --boot order=scsi0
 qm set "${VMID}" --ipconfig0 ip=dhcp
+# 如需模板默认固定 IP，可改用下面两行，并注释上一行 DHCP。
+# qm set "${VMID}" --ipconfig0 ip=192.168.1.224/24,gw=192.168.1.1
+# qm set "${VMID}" --nameserver 223.5.5.5
 qm set "${VMID}" --ciuser root
 qm set "${VMID}" --cipassword "password"
 qm template "${VMID}"
@@ -332,7 +346,14 @@ qm clone 9013 101 \
   --full 1 \
   --storage "${STORAGE}"
 
-qm resize 101 scsi0 +22G
+# 增加磁盘容量
+#qm resize 101 scsi0 +22G
+
+# 默认继承模板里的 DHCP 配置。
+# 如果希望这台克隆 VM 使用固定 IP，可在启动前取消下面两行注释。
+# qm set 101 --ipconfig0 ip=192.168.1.101/24,gw=192.168.1.1
+# qm set 101 --nameserver 223.5.5.5
+
 qm start 101
 ```
 
