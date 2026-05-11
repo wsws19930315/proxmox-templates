@@ -4,7 +4,7 @@
 
 ## 支持镜像
 
-每次 GitHub Actions 会构建 4 个 amd64 镜像：
+每次 GitHub Actions 会构建 5 个 amd64 镜像：
 
 | 系统 | 文件名 |
 | --- | --- |
@@ -12,6 +12,7 @@
 | Debian 13 | `debian-13-genericcloud-amd64-pve-custom.qcow2` |
 | Ubuntu 22.04 LTS | `ubuntu-22.04-server-cloudimg-amd64-pve-custom.qcow2` |
 | Ubuntu 24.04 LTS | `ubuntu-24.04-server-cloudimg-amd64-pve-custom.qcow2` |
+| Ubuntu 26.04 LTS | `ubuntu-26.04-server-cloudimg-amd64-pve-custom.qcow2` |
 
 ## 默认集成
 
@@ -320,6 +321,57 @@ qm set "${VMID}" --cipassword "password"
 qm template "${VMID}"
 ```
 
+### Ubuntu 26.04 模板
+
+```bash
+REPO="vbskycn/proxmox-templates"
+RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+[ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
+BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
+VMID=9026
+if pvesm status | awk 'NR>1 {print $1}' | grep -qx "local-lvm"; then
+  STORAGE="local-lvm"
+else
+  STORAGE="$(pvesm status --content images 2>/dev/null | awk 'NR==2 {print $1}')"
+  [ -n "${STORAGE}" ] || STORAGE="$(pvesm status --content rootdir 2>/dev/null | awk 'NR==2 {print $1}')"
+fi
+[ -n "${STORAGE}" ] || { echo "无法自动识别 PVE 存储名"; exit 1; }
+NAME="ubuntu-26.04-dev-template"
+IMAGE="ubuntu-26.04-server-cloudimg-amd64-pve-custom.qcow2"
+IMAGE_DIR="/root/cloud-image"
+
+mkdir -p "${IMAGE_DIR}"
+cd "${IMAGE_DIR}"
+wget -O "${IMAGE}" "${BASE_URL}/${IMAGE}"
+wget -O "${IMAGE}.sha256" "${BASE_URL}/${IMAGE}.sha256"
+awk -v image="${IMAGE}" '{print $1 "  " image}' "${IMAGE}.sha256" | sha256sum -c -
+
+qm create "${VMID}" \
+  --machine q35 \
+  --cpu cputype=host \
+  --name "${NAME}" \
+  --scsi2 "${STORAGE}:cloudinit" \
+  --serial0 socket \
+  --vga serial0 \
+  --scsihw virtio-scsi-single \
+  --net0 virtio,bridge=vmbr0 \
+  --agent 1 \
+  --ostype l26 \
+  --memory 2048 \
+  --cores 2
+
+qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
+qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
+qm set "${VMID}" --boot order=scsi0
+qm set "${VMID}" --ipconfig0 ip=dhcp
+# 如需模板默认固定 IP，可改用下面两行，并注释上一行 DHCP。
+# qm set "${VMID}" --ipconfig0 ip=192.168.1.226/24,gw=192.168.1.1
+# qm set "${VMID}" --nameserver 223.5.5.5
+qm set "${VMID}" --ciuser root
+qm set "${VMID}" --cipassword "password"
+qm template "${VMID}"
+```
+
 建议 VMID 规划：
 
 | 系统 | 建议 VMID | 模板名 |
@@ -328,6 +380,7 @@ qm template "${VMID}"
 | Debian 13 | `9013` | `debian-13-dev-template` |
 | Ubuntu 22.04 | `9022` | `ubuntu-22.04-dev-template` |
 | Ubuntu 24.04 | `9024` | `ubuntu-24.04-dev-template` |
+| Ubuntu 26.04 | `9026` | `ubuntu-26.04-dev-template` |
 
 ## 克隆测试 VM
 
@@ -425,6 +478,7 @@ IMAGE_ID=debian12 ./build-pve-cloud-image.sh
 IMAGE_ID=debian13 ./build-pve-cloud-image.sh
 IMAGE_ID=ubuntu2204 ./build-pve-cloud-image.sh
 IMAGE_ID=ubuntu2404 ./build-pve-cloud-image.sh
+IMAGE_ID=ubuntu2604 ./build-pve-cloud-image.sh
 ```
 
 常用环境变量：

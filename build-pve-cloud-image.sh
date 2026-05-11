@@ -8,6 +8,7 @@
 # - debian13
 # - ubuntu2204
 # - ubuntu2404
+# - ubuntu2604
 #
 # 功能：
 # 1. 基于官方 Cloud Image
@@ -65,9 +66,14 @@ case "${IMAGE_ID}" in
     IMAGE_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
     DOCKER_OS="ubuntu"
     ;;
+  ubuntu2604)
+    IMAGE_NAME="ubuntu-26.04-server-cloudimg-amd64-pve-custom"
+    IMAGE_URL="https://cloud-images.ubuntu.com/releases/resolute/release/ubuntu-26.04-server-cloudimg-amd64.img"
+    DOCKER_OS="ubuntu"
+    ;;
   *)
     echo "不支持的 IMAGE_ID：${IMAGE_ID}" >&2
-    echo "可选值：debian12 debian13 ubuntu2204 ubuntu2404" >&2
+    echo "可选值：debian12 debian13 ubuntu2204 ubuntu2404 ubuntu2604" >&2
     exit 1
     ;;
 esac

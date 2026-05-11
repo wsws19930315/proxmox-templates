@@ -59,6 +59,8 @@ jobs:
             artifact_name: ubuntu-22.04-pve-cloud-template
           - image_id: ubuntu2404
             artifact_name: ubuntu-24.04-pve-cloud-template
+          - image_id: ubuntu2604
+            artifact_name: ubuntu-26.04-pve-cloud-template
 
     env:
       IMAGE_ID: ${{ matrix.image_id }}
@@ -182,6 +184,7 @@ jobs:
             - Debian 13 genericcloud amd64
             - Ubuntu 22.04 LTS cloudimg amd64
             - Ubuntu 24.04 LTS cloudimg amd64
+            - Ubuntu 26.04 LTS cloudimg amd64
 
             集成内容：
             - 常用运维、网络排障、性能观察、开发工具
