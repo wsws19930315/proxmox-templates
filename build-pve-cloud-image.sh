@@ -258,6 +258,8 @@ APT::Install-Suggests \"false\";
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then /usr/local/bin/python${PYTHON_SHORT_VERSION} -m pip install --upgrade pip setuptools wheel; fi" \
   \
+  --run-command "echo '===== 软件安装完成后的磁盘峰值用量 ====='; df -hT /; echo '===== inode 用量 ====='; df -ih /; echo '===== 关键目录占用 ====='; du -xh -d1 /usr /var /opt /root 2>/dev/null | sort -h || true" \
+  \
   --run-command "rm -rf /usr/local/src/Python-${PYTHON_VERSION} /usr/local/src/Python-${PYTHON_VERSION}.tgz" \
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ] && [ '${KEEP_BUILD_TOOLS}' != 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y purge gcc g++ make cmake pkg-config build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev uuid-dev || true; apt-get -y autoremove --purge || true; fi" \
