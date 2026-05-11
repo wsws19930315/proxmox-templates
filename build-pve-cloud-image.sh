@@ -176,6 +176,10 @@ chpasswd:
   \
   --append-line "/etc/default/grub:GRUB_DISABLE_OS_PROBER=true" \
   \
+  --write "/etc/default/grub.d/99-pve-cloud-init.cfg:# PVE NoCloud v1 会生成 eth0 网络配置；禁用 predictable names，避免 Ubuntu 26.04 将 ens18 改名为 eth0 时失败。
+GRUB_CMDLINE_LINUX=\"\${GRUB_CMDLINE_LINUX} net.ifnames=0 biosdevname=0\"
+" \
+  \
   --run-command "apt-get update" \
   \
   --write "/etc/apt/apt.conf.d/99-template-no-recommends:APT::Install-Recommends \"false\";
@@ -197,6 +201,12 @@ APT::Install-Suggests \"false\";
   --run-command "sed -i 's|Types: deb deb-src|Types: deb|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true" \
   \
   --run-command "sed -i 's|generate_mirrorlists: true|generate_mirrorlists: false|g' /etc/cloud/cloud.cfg.d/01_debian_cloud.cfg 2>/dev/null || true" \
+  \
+  --write "/etc/cloud/cloud.cfg.d/99-pve-template-no-package-upgrade.cfg:# 镜像构建阶段已经完成系统更新，克隆机首次启动不再执行 package upgrade，避免 snap refresh 干扰 cloud-init。
+package_update: false
+package_upgrade: false
+package_reboot_if_required: false
+" \
   \
   --run-command "if [ '${REMOVE_SNAPD}' = 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y purge snapd packagekit packagekit-tools || true; rm -rf /snap /var/snap /var/lib/snapd /var/cache/snapd; fi" \
   \
@@ -291,6 +301,8 @@ APT::Install-Suggests \"false\";
   --run-command "apt-get -y clean || true" \
   \
   --run-command "if [ '${CLEAN_DOCS}' = 'true' ]; then rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* /tmp/* /var/tmp/*; fi" \
+  \
+  --run-command "cloud-init clean --logs || true; rm -rf /var/lib/cloud/instances/* /var/lib/cloud/instance; rm -f /etc/netplan/50-cloud-init.yaml" \
   \
   --delete "/var/log/*.log" \
   \
