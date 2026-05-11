@@ -13,8 +13,8 @@
 # 功能：
 # 1. 基于官方 Cloud Image
 # 2. 安装常用运维、网络排障、性能观察工具
-# 3. 安装 Docker CE 官方 stable 仓库版本
-# 4. 安装 Node.js 24.x LTS
+# 3. 可选安装 Docker CE 官方 stable 仓库版本
+# 4. 可选安装 Node.js 24.x LTS
 # 5. 可选额外编译安装 Python 3.14，不替换系统 python3
 # 6. 启用 SSH、cloud-init、qemu-guest-agent
 # 7. 清理缓存并压缩 qcow2 镜像
@@ -33,6 +33,8 @@ TIMEZONE="${TIMEZONE:-Asia/Shanghai}"
 NODE_MAJOR="${NODE_MAJOR:-24}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.14.4}"
 PYTHON_SHORT_VERSION="${PYTHON_VERSION%.*}"
+INSTALL_DOCKER="${INSTALL_DOCKER:-true}"
+INSTALL_NODE="${INSTALL_NODE:-true}"
 INSTALL_EXTRA_PYTHON="${INSTALL_EXTRA_PYTHON:-true}"
 IMAGE_DISK_SIZE="${IMAGE_DISK_SIZE:-8G}"
 ROOT_PARTITION="${ROOT_PARTITION:-/dev/sda1}"
@@ -89,7 +91,9 @@ echo "镜像地址：${IMAGE_URL}"
 echo "工作目录：${WORKDIR}"
 echo "最终镜像：${FINAL_IMAGE}"
 echo "root 密码：${ROOT_PASSWORD}"
-echo "Node.js：${NODE_MAJOR}.x LTS"
+echo "安装 Docker：${INSTALL_DOCKER}"
+echo "安装 Node.js：${INSTALL_NODE}"
+echo "Node.js 版本：${NODE_MAJOR}.x LTS"
 echo "安装额外 Python：${INSTALL_EXTRA_PYTHON}"
 echo "额外 Python 版本：${PYTHON_VERSION}"
 echo "镜像虚拟磁盘：${IMAGE_DISK_SIZE}"
@@ -214,13 +218,13 @@ package_reboot_if_required: false
   \
   --run-command "install -m 0755 -d /etc/apt/keyrings" \
   \
-  --run-command "curl -fsSL https://download.docker.com/linux/${DOCKER_OS}/gpg -o /etc/apt/keyrings/docker.asc" \
+  --run-command "if [ '${INSTALL_DOCKER}' = 'true' ]; then curl -fsSL https://download.docker.com/linux/${DOCKER_OS}/gpg -o /etc/apt/keyrings/docker.asc; fi" \
   \
-  --run-command "chmod a+r /etc/apt/keyrings/docker.asc" \
+  --run-command "if [ '${INSTALL_DOCKER}' = 'true' ]; then chmod a+r /etc/apt/keyrings/docker.asc; fi" \
   \
-  --run-command "echo \"deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${DOCKER_OS} \$(. /etc/os-release && echo \"\$VERSION_CODENAME\") stable\" > /etc/apt/sources.list.d/docker.list" \
+  --run-command "if [ '${INSTALL_DOCKER}' = 'true' ]; then echo \"deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${DOCKER_OS} \$(. /etc/os-release && echo \"\$VERSION_CODENAME\") stable\" > /etc/apt/sources.list.d/docker.list; fi" \
   \
-  --run-command "curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash -" \
+  --run-command "if [ '${INSTALL_NODE}' = 'true' ]; then curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash -; fi" \
   \
   --run-command "echo 'iperf3 iperf3/start_daemon boolean false' | debconf-set-selections || true" \
   \
@@ -244,9 +248,9 @@ package_reboot_if_required: false
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y gcc g++ make cmake pkg-config build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev uuid-dev; fi" \
   \
-  --install "nodejs" \
+  --run-command "if [ '${INSTALL_NODE}' = 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs; fi" \
   \
-  --install "docker-ce,docker-ce-cli,containerd.io,docker-buildx-plugin,docker-compose-plugin" \
+  --run-command "if [ '${INSTALL_DOCKER}' = 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; fi" \
   \
   --install "zstd,bzip2,xz-utils" \
   \
@@ -274,9 +278,9 @@ package_reboot_if_required: false
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ] && [ '${KEEP_BUILD_TOOLS}' != 'true' ]; then DEBIAN_FRONTEND=noninteractive apt-get -y purge gcc g++ make cmake pkg-config build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev liblzma-dev uuid-dev || true; apt-get -y autoremove --purge || true; fi" \
   \
-  --run-command "node --version" \
+  --run-command "if [ '${INSTALL_NODE}' = 'true' ]; then node --version; fi" \
   \
-  --run-command "docker --version" \
+  --run-command "if [ '${INSTALL_DOCKER}' = 'true' ]; then docker --version; fi" \
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then /usr/local/bin/python${PYTHON_SHORT_VERSION} --version; fi" \
   \
@@ -284,7 +288,7 @@ package_reboot_if_required: false
   \
   --run-command "systemctl enable qemu-guest-agent || true" \
   \
-  --run-command "systemctl enable docker || true" \
+  --run-command "if [ '${INSTALL_DOCKER}' = 'true' ]; then systemctl enable docker || true; fi" \
   \
   --run-command "systemctl enable serial-getty@ttyS0.service || true" \
   \
@@ -352,7 +356,16 @@ echo "镜像 ID：${IMAGE_ID}"
 echo "最终镜像路径：${FINAL_IMAGE}"
 echo "默认登录信息：root / ${ROOT_PASSWORD}"
 echo "SSH：22"
-echo "Node.js：${NODE_MAJOR}.x LTS"
+if [ "${INSTALL_DOCKER}" = "true" ]; then
+  echo "Docker：已安装"
+else
+  echo "Docker：未安装"
+fi
+if [ "${INSTALL_NODE}" = "true" ]; then
+  echo "Node.js：${NODE_MAJOR}.x LTS"
+else
+  echo "Node.js：未安装"
+fi
 if [ "${INSTALL_EXTRA_PYTHON}" = "true" ]; then
   echo "额外 Python：/usr/local/bin/python${PYTHON_SHORT_VERSION}"
 else

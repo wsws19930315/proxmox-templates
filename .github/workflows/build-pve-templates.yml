@@ -15,6 +15,16 @@ on:
         description: "额外编译安装的 Python 稳定版，不替换系统 python3"
         required: true
         default: "3.14.4"
+      install_docker:
+        description: "是否安装 Docker CE"
+        required: true
+        type: boolean
+        default: true
+      install_node:
+        description: "是否安装 Node.js"
+        required: true
+        type: boolean
+        default: true
       install_extra_python:
         description: "是否额外编译安装 Python"
         required: true
@@ -68,6 +78,8 @@ jobs:
       ROOT_PASSWORD: ${{ inputs.root_password }}
       NODE_MAJOR: ${{ inputs.node_major }}
       PYTHON_VERSION: ${{ inputs.python_version }}
+      INSTALL_DOCKER: ${{ inputs.install_docker }}
+      INSTALL_NODE: ${{ inputs.install_node }}
       INSTALL_EXTRA_PYTHON: ${{ inputs.install_extra_python }}
       IMAGE_DISK_SIZE: "8G"
       ROOT_PARTITION: "/dev/sda1"
@@ -188,8 +200,9 @@ jobs:
 
             集成内容：
             - 常用运维、网络排障、性能观察、开发工具
-            - Docker CE 官方 stable 仓库版本
-            - Node.js ${{ inputs.node_major }}.x LTS
+            - 安装 Docker CE：${{ inputs.install_docker }}
+            - 安装 Node.js：${{ inputs.install_node }}
+            - Node.js 版本：${{ inputs.node_major }}.x LTS
             - 额外编译安装 Python：${{ inputs.install_extra_python }}
             - 额外 Python 版本：${{ inputs.python_version }}
             - 保留完整编译环境：${{ inputs.keep_build_tools }}

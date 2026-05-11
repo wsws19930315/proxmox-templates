@@ -21,11 +21,11 @@
 - 网络排障：`net-tools`、`iproute2`、`ping`、`arping`、`tracepath`、`traceroute`、`mtr-tiny`、`dnsutils`、`telnet`、`nmap`、`iperf3`、`tcpdump`、`lsof`、`socat`、`whois`
 - 性能观察：`htop`、`atop`、`iotop`、`iftop`、`nload`、`sysstat`
 - Shell 辅助：`tmux`、`screen`、`bash-completion`、`less`、`most`、`tree`、`jq`
-- Docker：Docker CE 官方 stable APT 源
-- Node.js：NodeSource 24.x LTS
+- Docker：默认安装 Docker CE 官方 stable APT 源版本，可在工作流中关闭
+- Node.js：默认安装 NodeSource 24.x LTS，可在工作流中关闭
 - Python：保留系统 `python3`，默认额外安装 `/usr/local/bin/python3.14`
 
-默认模板偏轻量：额外 Python 是可选项。启用额外 Python 时，编译 Python 3.14 所需的 `gcc`、`g++`、`make`、`cmake`、`build-essential` 等工具会临时安装，构建结束后清理。运行工作流时勾选 `keep_build_tools` 可保留这批编译环境；如果关闭 `install_extra_python`，则不会额外安装这批编译工具。
+默认模板偏轻量：Docker、Node.js、额外 Python 都是可选项，默认开启。启用额外 Python 时，编译 Python 3.14 所需的 `gcc`、`g++`、`make`、`cmake`、`build-essential` 等工具会临时安装，构建结束后清理。运行工作流时勾选 `keep_build_tools` 可保留这批编译环境；如果关闭 `install_extra_python`，则不会额外安装这批编译工具。
 
 默认构建时会执行系统更新，尽量减少首次登录后提示大量可升级安全更新。如果某次上游更新导致构建失败，可以在工作流里取消勾选 `apply_updates` 后重新构建。
 
@@ -429,8 +429,8 @@ ssh root@虚拟机IP
 
 ```bash
 systemctl status qemu-guest-agent --no-pager
-docker --version
-node --version
+command -v docker >/dev/null && docker --version || true
+command -v node >/dev/null && node --version || true
 python3 --version
 command -v python3.14 >/dev/null && python3.14 --version || true
 ```
@@ -454,6 +454,8 @@ command -v python3.14 >/dev/null && python3.14 --version || true
 | `root_password` | `password` | 镜像默认 root 密码 |
 | `node_major` | `24` | Node.js LTS 主版本 |
 | `python_version` | `3.14.4` | 额外编译安装的 Python 版本 |
+| `install_docker` | `true` | 是否安装 Docker CE |
+| `install_node` | `true` | 是否安装 Node.js |
 | `install_extra_python` | `true` | 是否额外编译安装 Python |
 | `publish_release` | `true` | 是否发布到 GitHub Releases |
 | `keep_build_tools` | `false` | 是否保留完整编译环境 |
@@ -489,6 +491,8 @@ WORKDIR=/tmp/pve-cloud-build/ubuntu2404 \
 ROOT_PASSWORD='password' \
 NODE_MAJOR=24 \
 PYTHON_VERSION=3.14.4 \
+INSTALL_DOCKER=true \
+INSTALL_NODE=true \
 INSTALL_EXTRA_PYTHON=true \
 IMAGE_DISK_SIZE=8G \
 KEEP_BUILD_TOOLS=false \
