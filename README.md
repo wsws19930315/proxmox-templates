@@ -43,7 +43,7 @@ SSH：22
 
 下面的脚本会自动做两件事：
 
-- 自动读取本仓库最新 GitHub Release 标签，不需要手动改日期。
+- 可选手动指定 GitHub Release 标签；如果不填，则自动读取本仓库最新 Release 标签。
 - 自动识别 PVE 存储名，优先使用 `local-lvm`，没有时选择第一个支持 `images` 或 `rootdir` 的存储。
 
 如果你的 PVE 是默认安装，通常直接复制脚本到 PVE 的 SSH 里运行即可。创建完成后，新建虚拟机只需要克隆对应模板。
@@ -66,8 +66,14 @@ pvesm status
 # GitHub 仓库。
 REPO="vbskycn/proxmox-templates"
 
-# 自动获取本仓库最新 Release 标签。
-RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+# 可选：如果想固定使用某个版本，就在这里填写 Release 标签。
+# 留空时会自动使用本仓库最新 Release。
+RELEASE_TAG="${RELEASE_TAG:-}"
+# RELEASE_TAG="pve-cloud-templates-2026.05.08"
+
+if [ -z "${RELEASE_TAG}" ]; then
+  RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+fi
 if [ -z "${RELEASE_TAG}" ]; then
   echo "无法获取最新 Release 标签，请检查网络或 GitHub API 访问。"
   exit 1
@@ -172,7 +178,9 @@ qm template "${VMID}"
 
 ```bash
 REPO="vbskycn/proxmox-templates"
-RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+RELEASE_TAG="${RELEASE_TAG:-}"
+# RELEASE_TAG="pve-cloud-templates-2026.05.08"
+[ -n "${RELEASE_TAG}" ] || RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
 [ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
 BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
 VMID=9013
@@ -223,7 +231,9 @@ qm template "${VMID}"
 
 ```bash
 REPO="vbskycn/proxmox-templates"
-RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+RELEASE_TAG="${RELEASE_TAG:-}"
+# RELEASE_TAG="pve-cloud-templates-2026.05.08"
+[ -n "${RELEASE_TAG}" ] || RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
 [ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
 BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
 VMID=9022
@@ -274,7 +284,9 @@ qm template "${VMID}"
 
 ```bash
 REPO="vbskycn/proxmox-templates"
-RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+RELEASE_TAG="${RELEASE_TAG:-}"
+# RELEASE_TAG="pve-cloud-templates-2026.05.08"
+[ -n "${RELEASE_TAG}" ] || RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
 [ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
 BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
 VMID=9024
@@ -325,7 +337,9 @@ qm template "${VMID}"
 
 ```bash
 REPO="vbskycn/proxmox-templates"
-RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
+RELEASE_TAG="${RELEASE_TAG:-}"
+# RELEASE_TAG="pve-cloud-templates-2026.05.08"
+[ -n "${RELEASE_TAG}" ] || RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
 [ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
 BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
 VMID=9026
