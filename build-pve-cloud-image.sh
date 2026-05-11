@@ -272,7 +272,7 @@ package_reboot_if_required: false
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then /usr/local/bin/python${PYTHON_SHORT_VERSION} -m pip install --upgrade pip setuptools wheel; fi" \
   \
-  --run-command "echo '===== 软件安装完成后的磁盘峰值用量 ====='; df -hT /; echo '===== inode 用量 ====='; df -ih /; echo '===== 关键目录占用 ====='; du -xh -d1 /usr /var /opt /root 2>/dev/null | sort -h || true" \
+  --run-command "printf '===== 软件安装完成后的磁盘峰值用量 =====\n' > /root/pve-template-peak-disk-usage.txt; df -hT / >> /root/pve-template-peak-disk-usage.txt; printf '\n===== inode 用量 =====\n' >> /root/pve-template-peak-disk-usage.txt; df -ih / >> /root/pve-template-peak-disk-usage.txt; printf '\n===== 关键目录占用 =====\n' >> /root/pve-template-peak-disk-usage.txt; du -xh -d1 /usr /var /opt /root 2>/dev/null | sort -h >> /root/pve-template-peak-disk-usage.txt || true" \
   \
   --run-command "rm -rf /usr/local/src/Python-${PYTHON_VERSION} /usr/local/src/Python-${PYTHON_VERSION}.tgz" \
   \
@@ -315,6 +315,11 @@ package_reboot_if_required: false
   --delete "/var/cache/apt/*" \
   \
   --truncate "/etc/machine-id"
+
+echo "[4/8] 软件安装完成后的磁盘峰值用量："
+sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-cat -a "${WORK_IMAGE}" /root/pve-template-peak-disk-usage.txt || true
+sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-customize -a "${WORK_IMAGE}" \
+  --run-command "rm -f /root/pve-template-peak-disk-usage.txt"
 
 # -----------------------------
 # 5. 检查镜像信息
