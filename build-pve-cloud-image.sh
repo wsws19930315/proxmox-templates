@@ -287,9 +287,11 @@ package_reboot_if_required: false
   \
   --install "zstd,bzip2,xz-utils" \
   \
-  --run-command "if [ '${DESKTOP_FLAVOR}' = 'debian-gnome' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true task-gnome-desktop gdm3 xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
+  --run-command "if [ '${DESKTOP_FLAVOR}' = 'debian-gnome' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true task-gnome-desktop gdm3 gnome-session gnome-shell xorg xserver-xorg-video-all xserver-xorg-input-libinput dbus-x11 xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
   \
-  --run-command "if [ '${DESKTOP_FLAVOR}' = 'ubuntu-desktop' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true ubuntu-desktop xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
+  --run-command "if [ '${DESKTOP_FLAVOR}' = 'ubuntu-desktop' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true ubuntu-desktop xorg dbus-x11 xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
+  \
+  --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then mkdir -p /etc/gdm3; printf '[daemon]\nWaylandEnable=false\nDefaultSession=gnome-xorg.desktop\n' > /etc/gdm3/daemon.conf; fi" \
   \
   --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y locales fonts-noto-cjk fonts-noto-color-emoji ibus ibus-libpinyin; sed -i 's/^# *zh_CN.UTF-8 UTF-8/zh_CN.UTF-8 UTF-8/' /etc/locale.gen; locale-gen zh_CN.UTF-8; update-locale LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh; localectl set-locale LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh || true; printf 'export LANG=zh_CN.UTF-8\nexport LANGUAGE=zh_CN:zh\n' > /etc/profile.d/00-zh-cn-locale.sh; chmod 0644 /etc/profile.d/00-zh-cn-locale.sh; fi" \
   \

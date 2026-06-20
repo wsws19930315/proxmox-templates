@@ -538,6 +538,15 @@ qm template "${VMID}"
 
 如果桌面版固定 IP 注入没有生效，请确认使用的是重新构建后的新模板。桌面版安装 NetworkManager 后可能会自动创建 DHCP 连接，新模板已经禁用自动 DHCP 连接，让 PVE 的 Cloud-init 网络配置优先生效。
 
+如果桌面版能 SSH 登录但 PVE 控制台黑屏，通常是图形登录管理器或 Wayland/Xorg 会话问题。新模板已强制 GDM 使用 Xorg。旧 VM 可先 SSH 登录检查：
+
+```bash
+systemctl status gdm3 --no-pager
+systemctl get-default
+journalctl -u gdm3 -b --no-pager | tail -100
+cat /etc/gdm3/daemon.conf
+```
+
 ## 克隆测试 VM
 
 比如从模板 `9013` 克隆一台测试 VM，VMID 为 `101`：
