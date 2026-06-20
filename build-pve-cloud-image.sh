@@ -291,6 +291,16 @@ package_reboot_if_required: false
   \
   --run-command "if [ '${DESKTOP_FLAVOR}' = 'ubuntu-desktop' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true ubuntu-desktop xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
   \
+  --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y locales fonts-noto-cjk fonts-noto-color-emoji ibus ibus-libpinyin; sed -i 's/^# *zh_CN.UTF-8 UTF-8/zh_CN.UTF-8 UTF-8/' /etc/locale.gen; locale-gen zh_CN.UTF-8; update-locale LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh; localectl set-locale LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh || true; printf 'export LANG=zh_CN.UTF-8\nexport LANGUAGE=zh_CN:zh\n' > /etc/profile.d/00-zh-cn-locale.sh; chmod 0644 /etc/profile.d/00-zh-cn-locale.sh; fi" \
+  \
+  --run-command "if [ '${DESKTOP_FLAVOR}' = 'debian-gnome' ] && apt-cache show task-chinese-s-desktop >/dev/null 2>&1; then DEBIAN_FRONTEND=noninteractive apt-get install -y task-chinese-s-desktop; fi" \
+  \
+  --run-command "if [ '${DESKTOP_FLAVOR}' = 'ubuntu-desktop' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y language-pack-zh-hans language-pack-gnome-zh-hans; fi" \
+  \
+  --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then mkdir -p /etc/NetworkManager/conf.d; printf '[main]\nno-auto-default=*\n' > /etc/NetworkManager/conf.d/99-pve-cloud-init.conf; rm -f /etc/NetworkManager/system-connections/* 2>/dev/null || true; systemctl enable NetworkManager || true; fi" \
+  \
+  --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then mkdir -p /etc/xdg/autostart; printf '[Desktop Entry]\nType=Application\nName=GNOME Initial Setup\nHidden=true\n' > /etc/xdg/autostart/gnome-initial-setup-first-login.desktop; systemctl mask gnome-initial-setup-first-login.service gnome-initial-setup-copy-worker.service || true; apt-get -y purge gnome-initial-setup || true; fi" \
+  \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src && curl -fsSLO https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz; fi" \
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src && tar -xzf Python-${PYTHON_VERSION}.tgz; fi" \

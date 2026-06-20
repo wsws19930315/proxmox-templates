@@ -27,6 +27,7 @@
 - Node.js：默认安装 NodeSource 24.x LTS，可在工作流中关闭
 - Python：保留系统 `python3`，默认额外安装 `/usr/local/bin/python3.14`
 - 桌面版：Debian 13 使用官方 GNOME 桌面任务包，Ubuntu 26.04 使用官方 `ubuntu-desktop` 元包；服务器版不安装桌面环境
+- 桌面版中文：默认安装简体中文语言包、Noto CJK 字体和中文输入法，并把系统 locale 设置为 `zh_CN.UTF-8`
 
 默认模板偏轻量：Docker、Node.js、额外 Python 都是可选项，默认开启。启用额外 Python 时，编译 Python 3.14 所需的 `gcc`、`g++`、`make`、`cmake`、`build-essential` 等工具会临时安装，构建结束后清理。运行工作流时勾选 `keep_build_tools` 可保留这批编译环境；如果关闭 `install_extra_python`，则不会额外安装这批编译工具。
 
@@ -534,6 +535,8 @@ qm template "${VMID}"
 | Ubuntu 26.04 桌面版 | `9126` | `ubuntu-26.04-desktop-template` |
 
 桌面版创建模板时，下载文件名分别改成 `debian-13-genericcloud-amd64-pve-desktop-custom.qcow2` 或 `ubuntu-26.04-server-cloudimg-amd64-pve-desktop-custom.qcow2`。为了能在 PVE Web 控制台看到图形桌面，`qm create` 建议把服务器示例里的 `--vga serial0` 改成 `--vga virtio`，并额外加上 `--tablet 1`。桌面登录建议使用 Cloud-init 创建普通用户；SSH root 登录仍按模板默认配置保留。
+
+如果桌面版固定 IP 注入没有生效，请确认使用的是重新构建后的新模板。桌面版安装 NetworkManager 后可能会自动创建 DHCP 连接，新模板已经禁用自动 DHCP 连接，让 PVE 的 Cloud-init 网络配置优先生效。
 
 ## 克隆测试 VM
 
