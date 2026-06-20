@@ -56,7 +56,7 @@ SSH：22
 - 自动下载单文件镜像或桌面版分卷，并合并校验 SHA256。
 - 自动创建 VM、导入磁盘、设置 Cloud-init、转换为模板。
 
-在 PVE SSH 中粘贴下面一行即可交互创建模板：
+在 PVE SSH 中粘贴下面一行即可交互创建模板：选了系统后可以一路回车，其他在pve的web介面修改也是可以的
 
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/vbskycn/proxmox-templates/main/import-pve-template.sh)
