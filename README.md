@@ -575,7 +575,7 @@ qm template "${VMID}"
 
 桌面版创建模板时，下载文件名分别改成 `debian-13-genericcloud-amd64-pve-desktop-custom.qcow2` 或 `ubuntu-26.04-desktop-cloudimg-amd64-pve-custom.qcow2`。为了能在 PVE Web 控制台看到图形桌面，`qm create` 建议把服务器示例里的 `--vga serial0` 改成 `--vga virtio`，并额外加上 `--tablet 1`。桌面登录建议使用 Cloud-init 创建普通用户；SSH root 登录仍按模板默认配置保留。
 
-如果桌面版固定 IP 注入没有生效，请确认使用的是重新构建后的新模板。桌面版安装 NetworkManager 后可能会自动创建 DHCP 连接，新模板已经禁用自动 DHCP 连接，让 PVE 的 Cloud-init 网络配置优先生效。
+Ubuntu 26.04 桌面版保留官方首次设置向导。建议首次进入桌面后按向导创建普通用户和桌面密码；固定 IP、DNS 等网络设置也可以在桌面网络设置里调整。PVE 的 Cloud-init `cipassword` / `ipconfig0` 对桌面版仅作为辅助配置，服务器版仍推荐使用 Cloud-init 批量注入。
 
 如果桌面版能 SSH 登录但 PVE 控制台黑屏，通常是图形登录管理器或 Wayland/Xorg 会话问题。新模板已强制 GDM 使用 Xorg。旧 VM 可先 SSH 登录检查：
 

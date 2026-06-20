@@ -299,9 +299,7 @@ package_reboot_if_required: false
   \
   --run-command "if [ '${DESKTOP_FLAVOR}' = 'ubuntu-desktop' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y language-pack-zh-hans language-pack-gnome-zh-hans; fi" \
   \
-  --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then mkdir -p /etc/NetworkManager/conf.d; printf '[main]\nno-auto-default=*\n' > /etc/NetworkManager/conf.d/99-pve-cloud-init.conf; rm -f /etc/NetworkManager/system-connections/* 2>/dev/null || true; systemctl enable NetworkManager || true; fi" \
-  \
-  --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then mkdir -p /etc/xdg/autostart; printf '[Desktop Entry]\nType=Application\nName=GNOME Initial Setup\nHidden=true\n' > /etc/xdg/autostart/gnome-initial-setup-first-login.desktop; systemctl mask gnome-initial-setup-first-login.service gnome-initial-setup-copy-worker.service || true; apt-get -y purge gnome-initial-setup || true; fi" \
+  --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then systemctl enable NetworkManager || true; fi" \
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src && curl -fsSLO https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz; fi" \
   \

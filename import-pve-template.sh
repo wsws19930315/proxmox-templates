@@ -355,5 +355,9 @@ create_template
 echo "============================================================"
 echo "模板创建完成：${VMID} / ${NAME}"
 echo "默认登录：${CIUSER} / ${ROOT_PASSWORD}"
+if [[ "${IMAGE_ID}" == *desktop ]]; then
+  echo "桌面版提示：首次进入图形界面时建议按发行版设置向导创建普通桌面用户。"
+  echo "桌面网络和固定 IP 也可在首次进入桌面后通过系统设置调整。"
+fi
 echo "克隆测试示例：qm clone ${VMID} 101 --name test-${IMAGE_ID} --full 1 --storage ${STORAGE}"
 echo "============================================================"
