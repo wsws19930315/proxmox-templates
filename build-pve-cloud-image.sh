@@ -84,7 +84,7 @@ case "${IMAGE_ID}" in
     DOCKER_OS="ubuntu"
     ;;
   ubuntu2604desktop)
-    IMAGE_NAME="ubuntu-26.04-server-cloudimg-amd64-pve-desktop-custom"
+    IMAGE_NAME="ubuntu-26.04-desktop-cloudimg-amd64-pve-custom"
     IMAGE_URL="https://cloud-images.ubuntu.com/releases/resolute/release/ubuntu-26.04-server-cloudimg-amd64.img"
     DOCKER_OS="ubuntu"
     DESKTOP_FLAVOR="ubuntu-desktop"

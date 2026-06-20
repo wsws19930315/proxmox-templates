@@ -14,7 +14,7 @@
 | Ubuntu 22.04 LTS | `ubuntu-22.04-server-cloudimg-amd64-pve-custom.qcow2` |
 | Ubuntu 24.04 LTS | `ubuntu-24.04-server-cloudimg-amd64-pve-custom.qcow2` |
 | Ubuntu 26.04 LTS | `ubuntu-26.04-server-cloudimg-amd64-pve-custom.qcow2` |
-| Ubuntu 26.04 LTS 桌面版 | `ubuntu-26.04-server-cloudimg-amd64-pve-desktop-custom.qcow2` |
+| Ubuntu 26.04 LTS 桌面版 | `ubuntu-26.04-desktop-cloudimg-amd64-pve-custom.qcow2` |
 
 ## 默认集成
 
@@ -476,7 +476,7 @@ else
 fi
 [ -n "${STORAGE}" ] || { echo "无法自动识别 PVE 存储名"; exit 1; }
 NAME="ubuntu-26.04-desktop-template"
-IMAGE="ubuntu-26.04-server-cloudimg-amd64-pve-desktop-custom.qcow2"
+IMAGE="ubuntu-26.04-desktop-cloudimg-amd64-pve-custom.qcow2"
 IMAGE_DIR="/root/cloud-image"
 
 mkdir -p "${IMAGE_DIR}"
@@ -534,7 +534,7 @@ qm template "${VMID}"
 | Ubuntu 26.04 | `9026` | `ubuntu-26.04-dev-template` |
 | Ubuntu 26.04 桌面版 | `9126` | `ubuntu-26.04-desktop-template` |
 
-桌面版创建模板时，下载文件名分别改成 `debian-13-genericcloud-amd64-pve-desktop-custom.qcow2` 或 `ubuntu-26.04-server-cloudimg-amd64-pve-desktop-custom.qcow2`。为了能在 PVE Web 控制台看到图形桌面，`qm create` 建议把服务器示例里的 `--vga serial0` 改成 `--vga virtio`，并额外加上 `--tablet 1`。桌面登录建议使用 Cloud-init 创建普通用户；SSH root 登录仍按模板默认配置保留。
+桌面版创建模板时，下载文件名分别改成 `debian-13-genericcloud-amd64-pve-desktop-custom.qcow2` 或 `ubuntu-26.04-desktop-cloudimg-amd64-pve-custom.qcow2`。为了能在 PVE Web 控制台看到图形桌面，`qm create` 建议把服务器示例里的 `--vga serial0` 改成 `--vga virtio`，并额外加上 `--tablet 1`。桌面登录建议使用 Cloud-init 创建普通用户；SSH root 登录仍按模板默认配置保留。
 
 如果桌面版固定 IP 注入没有生效，请确认使用的是重新构建后的新模板。桌面版安装 NetworkManager 后可能会自动创建 DHCP 连接，新模板已经禁用自动 DHCP 连接，让 PVE 的 Cloud-init 网络配置优先生效。
 
