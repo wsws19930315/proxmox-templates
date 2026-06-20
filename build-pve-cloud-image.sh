@@ -371,7 +371,8 @@ qemu-img info "${WORK_IMAGE}"
 echo "[6/8] 压缩镜像..."
 
 rm -f "${FINAL_IMAGE}"
-sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-sparsify --compress "${WORK_IMAGE}" "${FINAL_IMAGE}"
+# 桌面版虚拟磁盘较大，virt-sparsify 对 /tmp 空间的估算会偏保守；忽略预检查，真实空间不足时复制阶段仍会失败。
+sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-sparsify --check-tmpdir=ignore --compress "${WORK_IMAGE}" "${FINAL_IMAGE}"
 
 # 修正文件权限，方便普通用户下载或 scp
 sudo chown "$(id -u):$(id -g)" "${FINAL_IMAGE}"
