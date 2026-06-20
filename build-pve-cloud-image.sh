@@ -9,7 +9,6 @@
 # - ubuntu2204
 # - ubuntu2404
 # - ubuntu2604
-# - debian13desktop
 # - ubuntu2604desktop
 #
 # 功能：
@@ -62,12 +61,6 @@ case "${IMAGE_ID}" in
     IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
     DOCKER_OS="debian"
     ;;
-  debian13desktop)
-    IMAGE_NAME="debian-13-genericcloud-amd64-pve-desktop-custom"
-    IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
-    DOCKER_OS="debian"
-    DESKTOP_FLAVOR="debian-gnome"
-    ;;
   ubuntu2204)
     IMAGE_NAME="ubuntu-22.04-server-cloudimg-amd64-pve-custom"
     IMAGE_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
@@ -91,7 +84,7 @@ case "${IMAGE_ID}" in
     ;;
   *)
     echo "不支持的 IMAGE_ID：${IMAGE_ID}" >&2
-    echo "可选值：debian12 debian13 ubuntu2204 ubuntu2404 ubuntu2604 debian13desktop ubuntu2604desktop" >&2
+    echo "可选值：debian12 debian13 ubuntu2204 ubuntu2404 ubuntu2604 ubuntu2604desktop" >&2
     exit 1
     ;;
 esac
@@ -287,15 +280,11 @@ package_reboot_if_required: false
   \
   --install "zstd,bzip2,xz-utils" \
   \
-  --run-command "if [ '${DESKTOP_FLAVOR}' = 'debian-gnome' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true task-gnome-desktop gdm3 gnome-session gnome-shell xorg xserver-xorg-video-all xserver-xorg-input-libinput dbus-x11 xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
-  \
   --run-command "if [ '${DESKTOP_FLAVOR}' = 'ubuntu-desktop' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true ubuntu-desktop xorg dbus-x11 xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
   \
   --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then mkdir -p /etc/gdm3; printf '[daemon]\nWaylandEnable=false\nDefaultSession=gnome-xorg.desktop\n' > /etc/gdm3/daemon.conf; fi" \
   \
   --run-command "if [ '${DESKTOP_FLAVOR}' != 'none' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y locales fonts-noto-cjk fonts-noto-color-emoji ibus ibus-libpinyin; sed -i 's/^# *zh_CN.UTF-8 UTF-8/zh_CN.UTF-8 UTF-8/' /etc/locale.gen; locale-gen zh_CN.UTF-8; update-locale LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh; localectl set-locale LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh || true; printf 'export LANG=zh_CN.UTF-8\nexport LANGUAGE=zh_CN:zh\n' > /etc/profile.d/00-zh-cn-locale.sh; chmod 0644 /etc/profile.d/00-zh-cn-locale.sh; fi" \
-  \
-  --run-command "if [ '${DESKTOP_FLAVOR}' = 'debian-gnome' ] && apt-cache show task-chinese-s-desktop >/dev/null 2>&1; then DEBIAN_FRONTEND=noninteractive apt-get install -y task-chinese-s-desktop; fi" \
   \
   --run-command "if [ '${DESKTOP_FLAVOR}' = 'ubuntu-desktop' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y language-pack-zh-hans language-pack-gnome-zh-hans; fi" \
   \

@@ -4,13 +4,12 @@
 
 ## 支持镜像
 
-每次 GitHub Actions 会构建 7 个 amd64 镜像：
+每次 GitHub Actions 会构建 6 个 amd64 镜像：
 
 | 系统 | 文件名 |
 | --- | --- |
 | Debian 12 | `debian-12-genericcloud-amd64-pve-custom.qcow2` |
 | Debian 13 | `debian-13-genericcloud-amd64-pve-custom.qcow2` |
-| Debian 13 桌面版 | `debian-13-genericcloud-amd64-pve-desktop-custom.qcow2` |
 | Ubuntu 22.04 LTS | `ubuntu-22.04-server-cloudimg-amd64-pve-custom.qcow2` |
 | Ubuntu 24.04 LTS | `ubuntu-24.04-server-cloudimg-amd64-pve-custom.qcow2` |
 | Ubuntu 26.04 LTS | `ubuntu-26.04-server-cloudimg-amd64-pve-custom.qcow2` |
@@ -26,7 +25,7 @@
 - Docker：默认安装 Docker CE 官方 stable APT 源版本，可在工作流中关闭
 - Node.js：默认安装 NodeSource 24.x LTS，可在工作流中关闭
 - Python：保留系统 `python3`，默认额外安装 `/usr/local/bin/python3.14`
-- 桌面版：Debian 13 使用官方 GNOME 桌面任务包，Ubuntu 26.04 使用官方 `ubuntu-desktop` 元包；服务器版不安装桌面环境
+- 桌面版：Ubuntu 26.04 使用官方 `ubuntu-desktop` 元包；服务器版不安装桌面环境
 - 桌面版中文：默认安装简体中文语言包、Noto CJK 字体和中文输入法，并把系统 locale 设置为 `zh_CN.UTF-8`
 
 默认模板偏轻量：Docker、Node.js、额外 Python 都是可选项，默认开启。启用额外 Python 时，编译 Python 3.14 所需的 `gcc`、`g++`、`make`、`cmake`、`build-essential` 等工具会临时安装，构建结束后清理。运行工作流时勾选 `keep_build_tools` 可保留这批编译环境；如果关闭 `install_extra_python`，则不会额外安装这批编译工具。
@@ -84,7 +83,6 @@ bash <(wget -qO- https://raw.githubusercontent.com/vbskycn/proxmox-templates/mai
 ```text
 debian12
 debian13
-debian13desktop
 ubuntu2204
 ubuntu2404
 ubuntu2604
@@ -433,70 +431,6 @@ qm set "${VMID}" --cipassword "password"
 qm template "${VMID}"
 ```
 
-### Debian 13 桌面版模板
-
-```bash
-REPO="vbskycn/proxmox-templates"
-RELEASE_TAG="${RELEASE_TAG:-}"
-# RELEASE_TAG="pve-cloud-templates-2026.05.08"
-[ -n "${RELEASE_TAG}" ] || RELEASE_TAG="$(wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
-[ -n "${RELEASE_TAG}" ] || { echo "无法获取最新 Release 标签"; exit 1; }
-BASE_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}"
-VMID=9113
-if pvesm status | awk 'NR>1 {print $1}' | grep -qx "local-lvm"; then
-  STORAGE="local-lvm"
-else
-  STORAGE="$(pvesm status --content images 2>/dev/null | awk 'NR==2 {print $1}')"
-  [ -n "${STORAGE}" ] || STORAGE="$(pvesm status --content rootdir 2>/dev/null | awk 'NR==2 {print $1}')"
-fi
-[ -n "${STORAGE}" ] || { echo "无法自动识别 PVE 存储名"; exit 1; }
-NAME="debian-13-desktop-template"
-IMAGE="debian-13-genericcloud-amd64-pve-desktop-custom.qcow2"
-IMAGE_DIR="/root/cloud-image"
-
-mkdir -p "${IMAGE_DIR}"
-cd "${IMAGE_DIR}"
-wget -O "${IMAGE}.sha256" "${BASE_URL}/${IMAGE}.sha256"
-if wget -O "${IMAGE}" "${BASE_URL}/${IMAGE}"; then
-  :
-else
-  rm -f "${IMAGE}" "${IMAGE}.part-"*
-  part=0
-  while true; do
-    part_name="$(printf '%s.part-%03d' "${IMAGE}" "${part}")"
-    wget -O "${part_name}" "${BASE_URL}/${part_name}" || break
-    part=$((part + 1))
-  done
-  [ "${part}" -gt 0 ] || { echo "无法下载桌面版镜像或分卷"; exit 1; }
-  cat "${IMAGE}.part-"* > "${IMAGE}"
-fi
-awk -v image="${IMAGE}" '{print $1 "  " image}' "${IMAGE}.sha256" | sha256sum -c -
-
-qm create "${VMID}" \
-  --machine q35 \
-  --cpu cputype=host \
-  --name "${NAME}" \
-  --scsi2 "${STORAGE}:cloudinit" \
-  --vga virtio \
-  --tablet 1 \
-  --scsihw virtio-scsi-single \
-  --net0 virtio,bridge=vmbr0 \
-  --agent 1 \
-  --ostype l26 \
-  --memory 4096 \
-  --cores 2
-
-qm importdisk "${VMID}" "${IMAGE_DIR}/${IMAGE}" "${STORAGE}"
-qm set "${VMID}" --scsi0 "${STORAGE}:vm-${VMID}-disk-0,discard=on,ssd=1"
-qm set "${VMID}" --boot order=scsi0
-qm set "${VMID}" --ipconfig0 ip=dhcp
-# qm set "${VMID}" --ipconfig0 ip=192.168.1.213/24,gw=192.168.1.1
-# qm set "${VMID}" --nameserver 223.5.5.5
-qm set "${VMID}" --ciuser root
-qm set "${VMID}" --cipassword "password"
-qm template "${VMID}"
-```
-
 ### Ubuntu 26.04 桌面版模板
 
 ```bash
@@ -567,13 +501,12 @@ qm template "${VMID}"
 | --- | --- | --- |
 | Debian 12 | `9012` | `debian-12-dev-template` |
 | Debian 13 | `9013` | `debian-13-dev-template` |
-| Debian 13 桌面版 | `9113` | `debian-13-desktop-template` |
 | Ubuntu 22.04 | `9022` | `ubuntu-22.04-dev-template` |
 | Ubuntu 24.04 | `9024` | `ubuntu-24.04-dev-template` |
 | Ubuntu 26.04 | `9026` | `ubuntu-26.04-dev-template` |
 | Ubuntu 26.04 桌面版 | `9126` | `ubuntu-26.04-desktop-template` |
 
-桌面版创建模板时，下载文件名分别改成 `debian-13-genericcloud-amd64-pve-desktop-custom.qcow2` 或 `ubuntu-26.04-desktop-cloudimg-amd64-pve-custom.qcow2`。为了能在 PVE Web 控制台看到图形桌面，`qm create` 建议把服务器示例里的 `--vga serial0` 改成 `--vga virtio`，并额外加上 `--tablet 1`。桌面登录建议使用 Cloud-init 创建普通用户；SSH root 登录仍按模板默认配置保留。
+桌面版创建模板时，下载文件名改成 `ubuntu-26.04-desktop-cloudimg-amd64-pve-custom.qcow2`。为了能在 PVE Web 控制台看到图形桌面，`qm create` 建议把服务器示例里的 `--vga serial0` 改成 `--vga virtio`，并额外加上 `--tablet 1`。桌面登录建议使用 Cloud-init 创建普通用户；SSH root 登录仍按模板默认配置保留。
 
 Ubuntu 26.04 桌面版保留官方首次设置向导。建议首次进入桌面后按向导创建普通用户和桌面密码；固定 IP、DNS 等网络设置也可以在桌面网络设置里调整。PVE 的 Cloud-init `cipassword` / `ipconfig0` 对桌面版仅作为辅助配置，服务器版仍推荐使用 Cloud-init 批量注入。
 
@@ -682,7 +615,6 @@ chmod +x ./build-pve-cloud-image.sh
 
 IMAGE_ID=debian12 ./build-pve-cloud-image.sh
 IMAGE_ID=debian13 ./build-pve-cloud-image.sh
-IMAGE_ID=debian13desktop ./build-pve-cloud-image.sh
 IMAGE_ID=ubuntu2204 ./build-pve-cloud-image.sh
 IMAGE_ID=ubuntu2404 ./build-pve-cloud-image.sh
 IMAGE_ID=ubuntu2604 ./build-pve-cloud-image.sh

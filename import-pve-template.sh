@@ -111,15 +111,6 @@ set_image_profile() {
       SERIAL="${SERIAL:-true}"
       TABLET="${TABLET:-false}"
       ;;
-    debian13desktop)
-      IMAGE="debian-13-genericcloud-amd64-pve-desktop-custom.qcow2"
-      NAME="${NAME:-debian-13-desktop-template}"
-      VMID="${VMID:-9113}"
-      MEMORY="${MEMORY:-4096}"
-      VGA="${VGA:-virtio}"
-      SERIAL="${SERIAL:-false}"
-      TABLET="${TABLET:-true}"
-      ;;
     ubuntu2204)
       IMAGE="ubuntu-22.04-server-cloudimg-amd64-pve-custom.qcow2"
       NAME="${NAME:-ubuntu-22.04-dev-template}"
@@ -158,7 +149,7 @@ set_image_profile() {
       ;;
     *)
       echo "不支持的 IMAGE_ID：${IMAGE_ID}"
-      echo "可选值：debian12 debian13 debian13desktop ubuntu2204 ubuntu2404 ubuntu2604 ubuntu2604desktop"
+      echo "可选值：debian12 debian13 ubuntu2204 ubuntu2404 ubuntu2604 ubuntu2604desktop"
       exit 1
       ;;
   esac
@@ -173,22 +164,20 @@ choose_image_interactive() {
 请选择要创建的模板：
   1) Debian 12 服务器版
   2) Debian 13 服务器版
-  3) Debian 13 桌面版
-  4) Ubuntu 22.04 服务器版
-  5) Ubuntu 24.04 服务器版
-  6) Ubuntu 26.04 服务器版
-  7) Ubuntu 26.04 桌面版
+  3) Ubuntu 22.04 服务器版
+  4) Ubuntu 24.04 服务器版
+  5) Ubuntu 26.04 服务器版
+  6) Ubuntu 26.04 桌面版
 EOF
   read -r -p "请输入序号 [2]: " choice
   choice="${choice:-2}"
   case "${choice}" in
     1) IMAGE_ID="debian12" ;;
     2) IMAGE_ID="debian13" ;;
-    3) IMAGE_ID="debian13desktop" ;;
-    4) IMAGE_ID="ubuntu2204" ;;
-    5) IMAGE_ID="ubuntu2404" ;;
-    6) IMAGE_ID="ubuntu2604" ;;
-    7) IMAGE_ID="ubuntu2604desktop" ;;
+    3) IMAGE_ID="ubuntu2204" ;;
+    4) IMAGE_ID="ubuntu2404" ;;
+    5) IMAGE_ID="ubuntu2604" ;;
+    6) IMAGE_ID="ubuntu2604desktop" ;;
     *) echo "无效选择：${choice}"; exit 1 ;;
   esac
 }

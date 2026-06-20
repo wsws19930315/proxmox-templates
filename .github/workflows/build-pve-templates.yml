@@ -69,10 +69,6 @@ jobs:
             artifact_name: debian-13-pve-cloud-template
             image_disk_size: 8G
             remove_snapd: "true"
-          - image_id: debian13desktop
-            artifact_name: debian-13-pve-desktop-template
-            image_disk_size: 20G
-            remove_snapd: "true"
           - image_id: ubuntu2204
             artifact_name: ubuntu-22.04-pve-cloud-template
             image_disk_size: 8G
@@ -226,7 +222,6 @@ jobs:
             包含镜像：
             - Debian 12 genericcloud amd64
             - Debian 13 genericcloud amd64
-            - Debian 13 GNOME desktop amd64
             - Ubuntu 22.04 LTS cloudimg amd64
             - Ubuntu 24.04 LTS cloudimg amd64
             - Ubuntu 26.04 LTS cloudimg amd64
