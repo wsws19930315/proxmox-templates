@@ -49,12 +49,51 @@ SSH：22
 
 ## 在 PVE 上直接使用 Release 镜像
 
-下面的脚本会自动做两件事：
+推荐在 PVE 主机上使用仓库内的一键脚本。它会自动完成：
 
 - 可选手动指定 GitHub Release 标签；如果不填，则自动读取本仓库最新 Release 标签。
 - 自动识别 PVE 存储名，优先使用 `local-lvm`，没有时选择第一个支持 `images` 或 `rootdir` 的存储。
+- 自动下载单文件镜像或桌面版分卷，并合并校验 SHA256。
+- 自动创建 VM、导入磁盘、设置 Cloud-init、转换为模板。
 
-如果你的 PVE 是默认安装，通常直接复制脚本到 PVE 的 SSH 里运行即可。创建完成后，新建虚拟机只需要克隆对应模板。
+在 PVE SSH 中粘贴下面一行即可交互创建模板：
+
+```bash
+bash <(wget -qO- https://raw.githubusercontent.com/vbskycn/proxmox-templates/main/import-pve-template.sh)
+```
+
+如果想完全非交互，也可以用环境变量指定参数：
+
+```bash
+ASSUME_YES=true IMAGE_ID=ubuntu2604desktop VMID=9126 NAME=ubuntu-26.04-desktop-template bash <(wget -qO- https://raw.githubusercontent.com/vbskycn/proxmox-templates/main/import-pve-template.sh)
+```
+
+固定 IP 示例：
+
+```bash
+IMAGE_ID=ubuntu2604desktop \
+VMID=9126 \
+IPCONFIG0='ip=192.168.1.226/24,gw=192.168.1.1' \
+NAMESERVER='223.5.5.5' \
+ASSUME_YES=true \
+bash <(wget -qO- https://raw.githubusercontent.com/vbskycn/proxmox-templates/main/import-pve-template.sh)
+```
+
+可选的 `IMAGE_ID`：
+
+```text
+debian12
+debian13
+debian13desktop
+ubuntu2204
+ubuntu2404
+ubuntu2604
+ubuntu2604desktop
+```
+
+如果你的 PVE 是默认安装，通常直接运行一键脚本即可。创建完成后，新建虚拟机只需要克隆对应模板。
+
+下面的长命令示例适合想手动理解每一步的用户参考。
 
 如需先查看 PVE 存储列表：
 
