@@ -9,6 +9,8 @@
 # - ubuntu2204
 # - ubuntu2404
 # - ubuntu2604
+# - debian13desktop
+# - ubuntu2604desktop
 #
 # 功能：
 # 1. 基于官方 Cloud Image
@@ -36,9 +38,9 @@ PYTHON_SHORT_VERSION="${PYTHON_VERSION%.*}"
 INSTALL_DOCKER="${INSTALL_DOCKER:-true}"
 INSTALL_NODE="${INSTALL_NODE:-true}"
 INSTALL_EXTRA_PYTHON="${INSTALL_EXTRA_PYTHON:-true}"
-IMAGE_DISK_SIZE="${IMAGE_DISK_SIZE:-8G}"
+IMAGE_DISK_SIZE="${IMAGE_DISK_SIZE:-}"
 ROOT_PARTITION="${ROOT_PARTITION:-/dev/sda1}"
-REMOVE_SNAPD="${REMOVE_SNAPD:-true}"
+REMOVE_SNAPD="${REMOVE_SNAPD:-}"
 KEEP_BUILD_TOOLS="${KEEP_BUILD_TOOLS:-false}"
 CLEAN_DOCS="${CLEAN_DOCS:-true}"
 APPLY_UPDATES="${APPLY_UPDATES:-true}"
@@ -46,6 +48,8 @@ APPLY_UPDATES="${APPLY_UPDATES:-true}"
 # GitHub Actions 等受限环境下，libguestfs 默认后端可能触发 passt/libvirt 限制。
 # 显式使用 direct 后端，让 virt-customize 直接启动 qemu appliance。
 export LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND:-direct}"
+
+DESKTOP_FLAVOR="none"
 
 case "${IMAGE_ID}" in
   debian12)
@@ -57,6 +61,12 @@ case "${IMAGE_ID}" in
     IMAGE_NAME="debian-13-genericcloud-amd64-pve-custom"
     IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
     DOCKER_OS="debian"
+    ;;
+  debian13desktop)
+    IMAGE_NAME="debian-13-genericcloud-amd64-pve-desktop-custom"
+    IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
+    DOCKER_OS="debian"
+    DESKTOP_FLAVOR="debian-gnome"
     ;;
   ubuntu2204)
     IMAGE_NAME="ubuntu-22.04-server-cloudimg-amd64-pve-custom"
@@ -73,12 +83,34 @@ case "${IMAGE_ID}" in
     IMAGE_URL="https://cloud-images.ubuntu.com/releases/resolute/release/ubuntu-26.04-server-cloudimg-amd64.img"
     DOCKER_OS="ubuntu"
     ;;
+  ubuntu2604desktop)
+    IMAGE_NAME="ubuntu-26.04-server-cloudimg-amd64-pve-desktop-custom"
+    IMAGE_URL="https://cloud-images.ubuntu.com/releases/resolute/release/ubuntu-26.04-server-cloudimg-amd64.img"
+    DOCKER_OS="ubuntu"
+    DESKTOP_FLAVOR="ubuntu-desktop"
+    ;;
   *)
     echo "不支持的 IMAGE_ID：${IMAGE_ID}" >&2
-    echo "可选值：debian12 debian13 ubuntu2204 ubuntu2404 ubuntu2604" >&2
+    echo "可选值：debian12 debian13 ubuntu2204 ubuntu2404 ubuntu2604 debian13desktop ubuntu2604desktop" >&2
     exit 1
     ;;
 esac
+
+if [ -z "${IMAGE_DISK_SIZE}" ]; then
+  if [ "${DESKTOP_FLAVOR}" = "none" ]; then
+    IMAGE_DISK_SIZE="8G"
+  else
+    IMAGE_DISK_SIZE="20G"
+  fi
+fi
+
+if [ -z "${REMOVE_SNAPD}" ]; then
+  if [ "${DESKTOP_FLAVOR}" = "ubuntu-desktop" ]; then
+    REMOVE_SNAPD="false"
+  else
+    REMOVE_SNAPD="true"
+  fi
+fi
 
 SRC_IMAGE="${WORKDIR}/${IMAGE_NAME}-src.qcow2"
 WORK_IMAGE="${WORKDIR}/${IMAGE_NAME}-work.qcow2"
@@ -96,6 +128,7 @@ echo "安装 Node.js：${INSTALL_NODE}"
 echo "Node.js 版本：${NODE_MAJOR}.x LTS"
 echo "安装额外 Python：${INSTALL_EXTRA_PYTHON}"
 echo "额外 Python 版本：${PYTHON_VERSION}"
+echo "桌面环境：${DESKTOP_FLAVOR}"
 echo "镜像虚拟磁盘：${IMAGE_DISK_SIZE}"
 echo "扩容根分区：${ROOT_PARTITION}"
 echo "移除 snapd：${REMOVE_SNAPD}"
@@ -254,6 +287,10 @@ package_reboot_if_required: false
   \
   --install "zstd,bzip2,xz-utils" \
   \
+  --run-command "if [ '${DESKTOP_FLAVOR}' = 'debian-gnome' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true task-gnome-desktop gdm3 xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
+  \
+  --run-command "if [ '${DESKTOP_FLAVOR}' = 'ubuntu-desktop' ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y -o APT::Install-Recommends=true ubuntu-desktop xrdp; systemctl set-default graphical.target; systemctl enable gdm3 || true; systemctl enable xrdp || true; fi" \
+  \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src && curl -fsSLO https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz; fi" \
   \
   --run-command "if [ '${INSTALL_EXTRA_PYTHON}' = 'true' ]; then cd /usr/local/src && tar -xzf Python-${PYTHON_VERSION}.tgz; fi" \
@@ -370,6 +407,11 @@ if [ "${INSTALL_NODE}" = "true" ]; then
   echo "Node.js：${NODE_MAJOR}.x LTS"
 else
   echo "Node.js：未安装"
+fi
+if [ "${DESKTOP_FLAVOR}" != "none" ]; then
+  echo "桌面环境：${DESKTOP_FLAVOR}"
+else
+  echo "桌面环境：未安装"
 fi
 if [ "${INSTALL_EXTRA_PYTHON}" = "true" ]; then
   echo "额外 Python：/usr/local/bin/python${PYTHON_SHORT_VERSION}"

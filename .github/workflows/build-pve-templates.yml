@@ -55,7 +55,7 @@ jobs:
     # 固定 Ubuntu 22.04 runner：ubuntu-latest 当前可能是 24.04，
     # 其 QEMU/libguestfs 网络栈会触发 passt，在 GitHub Actions 环境中不稳定。
     runs-on: ubuntu-22.04
-    timeout-minutes: 180
+    timeout-minutes: 240
 
     strategy:
       fail-fast: false
@@ -63,14 +63,32 @@ jobs:
         include:
           - image_id: debian12
             artifact_name: debian-12-pve-cloud-template
+            image_disk_size: 8G
+            remove_snapd: "true"
           - image_id: debian13
             artifact_name: debian-13-pve-cloud-template
+            image_disk_size: 8G
+            remove_snapd: "true"
+          - image_id: debian13desktop
+            artifact_name: debian-13-pve-desktop-template
+            image_disk_size: 20G
+            remove_snapd: "true"
           - image_id: ubuntu2204
             artifact_name: ubuntu-22.04-pve-cloud-template
+            image_disk_size: 8G
+            remove_snapd: "true"
           - image_id: ubuntu2404
             artifact_name: ubuntu-24.04-pve-cloud-template
+            image_disk_size: 8G
+            remove_snapd: "true"
           - image_id: ubuntu2604
             artifact_name: ubuntu-26.04-pve-cloud-template
+            image_disk_size: 8G
+            remove_snapd: "true"
+          - image_id: ubuntu2604desktop
+            artifact_name: ubuntu-26.04-pve-desktop-template
+            image_disk_size: 20G
+            remove_snapd: "false"
 
     env:
       IMAGE_ID: ${{ matrix.image_id }}
@@ -81,9 +99,9 @@ jobs:
       INSTALL_DOCKER: ${{ inputs.install_docker }}
       INSTALL_NODE: ${{ inputs.install_node }}
       INSTALL_EXTRA_PYTHON: ${{ inputs.install_extra_python }}
-      IMAGE_DISK_SIZE: "8G"
+      IMAGE_DISK_SIZE: ${{ matrix.image_disk_size }}
       ROOT_PARTITION: "/dev/sda1"
-      REMOVE_SNAPD: "true"
+      REMOVE_SNAPD: ${{ matrix.remove_snapd }}
       KEEP_BUILD_TOOLS: ${{ inputs.keep_build_tools }}
       APPLY_UPDATES: ${{ inputs.apply_updates }}
       CLEAN_DOCS: "true"
@@ -168,17 +186,31 @@ jobs:
         run: |
           find dist -maxdepth 1 -type f -print -exec ls -lh {} \;
 
+      - name: Split large release assets
+        run: |
+          max_bytes=$((1900 * 1024 * 1024))
+          for file in dist/*.qcow2; do
+            [ -f "${file}" ] || continue
+            size="$(stat -c '%s' "${file}")"
+            if [ "${size}" -ge "${max_bytes}" ]; then
+              echo "Splitting ${file}; size ${size} bytes is larger than ${max_bytes} bytes."
+              split -b "${max_bytes}" -d -a 3 "${file}" "${file}.part-"
+              rm -f "${file}"
+            fi
+          done
+          find dist -maxdepth 1 -type f -print -exec ls -lh {} \;
+
       - name: Check GitHub Release asset size limit
         run: |
           max_bytes=$((2 * 1024 * 1024 * 1024))
           failed=0
-          for file in dist/*.qcow2; do
+          while IFS= read -r file; do
             size="$(stat -c '%s' "${file}")"
             if [ "${size}" -ge "${max_bytes}" ]; then
               echo "::error file=${file}::GitHub Release 单个附件必须小于 2 GiB，当前文件大小为 ${size} bytes。"
               failed=1
             fi
-          done
+          done < <(find dist -maxdepth 1 -type f)
           exit "${failed}"
 
       - name: Publish GitHub Release
@@ -194,9 +226,11 @@ jobs:
             包含镜像：
             - Debian 12 genericcloud amd64
             - Debian 13 genericcloud amd64
+            - Debian 13 GNOME desktop amd64
             - Ubuntu 22.04 LTS cloudimg amd64
             - Ubuntu 24.04 LTS cloudimg amd64
             - Ubuntu 26.04 LTS cloudimg amd64
+            - Ubuntu 26.04 LTS desktop amd64
 
             集成内容：
             - 常用运维、网络排障、性能观察、开发工具
@@ -208,11 +242,12 @@ jobs:
             - 保留完整编译环境：${{ inputs.keep_build_tools }}
             - 构建时应用系统更新：${{ inputs.apply_updates }}
 
+            说明：桌面版镜像可能超过 GitHub Release 单个附件大小限制，工作流会自动切分为 `.part-000`、`.part-001` 等分卷；下载后可用 `cat 文件名.part-* > 文件名` 合并，再用 `.sha256` 校验。
+
             默认登录：
             - 用户：root
             - 密码：${{ inputs.root_password }}
 
             安全提醒：公开模板包含默认 root 密码，首次启动后请立即修改密码，或使用 cloud-init 注入自己的用户和 SSH 公钥。
           files: |
-            dist/*.qcow2
-            dist/*.sha256
+            dist/*

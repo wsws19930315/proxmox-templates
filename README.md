@@ -4,15 +4,17 @@
 
 ## 支持镜像
 
-每次 GitHub Actions 会构建 5 个 amd64 镜像：
+每次 GitHub Actions 会构建 7 个 amd64 镜像：
 
 | 系统 | 文件名 |
 | --- | --- |
 | Debian 12 | `debian-12-genericcloud-amd64-pve-custom.qcow2` |
 | Debian 13 | `debian-13-genericcloud-amd64-pve-custom.qcow2` |
+| Debian 13 桌面版 | `debian-13-genericcloud-amd64-pve-desktop-custom.qcow2` |
 | Ubuntu 22.04 LTS | `ubuntu-22.04-server-cloudimg-amd64-pve-custom.qcow2` |
 | Ubuntu 24.04 LTS | `ubuntu-24.04-server-cloudimg-amd64-pve-custom.qcow2` |
 | Ubuntu 26.04 LTS | `ubuntu-26.04-server-cloudimg-amd64-pve-custom.qcow2` |
+| Ubuntu 26.04 LTS 桌面版 | `ubuntu-26.04-server-cloudimg-amd64-pve-desktop-custom.qcow2` |
 
 ## 默认集成
 
@@ -24,8 +26,13 @@
 - Docker：默认安装 Docker CE 官方 stable APT 源版本，可在工作流中关闭
 - Node.js：默认安装 NodeSource 24.x LTS，可在工作流中关闭
 - Python：保留系统 `python3`，默认额外安装 `/usr/local/bin/python3.14`
+- 桌面版：Debian 13 使用官方 GNOME 桌面任务包，Ubuntu 26.04 使用官方 `ubuntu-desktop` 元包；服务器版不安装桌面环境
 
 默认模板偏轻量：Docker、Node.js、额外 Python 都是可选项，默认开启。启用额外 Python 时，编译 Python 3.14 所需的 `gcc`、`g++`、`make`、`cmake`、`build-essential` 等工具会临时安装，构建结束后清理。运行工作流时勾选 `keep_build_tools` 可保留这批编译环境；如果关闭 `install_extra_python`，则不会额外安装这批编译工具。
+
+桌面版会明显更大，工作流中只给桌面版单独使用 `20G` 虚拟磁盘；服务器版仍保持默认 `8G`。
+
+如果桌面版镜像超过 GitHub Release 单个附件大小限制，工作流会自动切成 `.part-000`、`.part-001` 等分卷。下载后在同一目录执行 `cat 镜像名.qcow2.part-* > 镜像名.qcow2` 合并，再用对应 `.sha256` 校验。
 
 默认构建时会执行系统更新，尽量减少首次登录后提示大量可升级安全更新。如果某次上游更新导致构建失败，可以在工作流里取消勾选 `apply_updates` 后重新构建。
 
@@ -392,9 +399,13 @@ qm template "${VMID}"
 | --- | --- | --- |
 | Debian 12 | `9012` | `debian-12-dev-template` |
 | Debian 13 | `9013` | `debian-13-dev-template` |
+| Debian 13 桌面版 | `9113` | `debian-13-desktop-template` |
 | Ubuntu 22.04 | `9022` | `ubuntu-22.04-dev-template` |
 | Ubuntu 24.04 | `9024` | `ubuntu-24.04-dev-template` |
 | Ubuntu 26.04 | `9026` | `ubuntu-26.04-dev-template` |
+| Ubuntu 26.04 桌面版 | `9126` | `ubuntu-26.04-desktop-template` |
+
+桌面版创建模板时，下载文件名分别改成 `debian-13-genericcloud-amd64-pve-desktop-custom.qcow2` 或 `ubuntu-26.04-server-cloudimg-amd64-pve-desktop-custom.qcow2`。为了能在 PVE Web 控制台看到图形桌面，`qm create` 建议把服务器示例里的 `--vga serial0` 改成 `--vga virtio`，并额外加上 `--tablet 1`。桌面登录建议使用 Cloud-init 创建普通用户；SSH root 登录仍按模板默认配置保留。
 
 ## 克隆测试 VM
 
@@ -492,9 +503,11 @@ chmod +x ./build-pve-cloud-image.sh
 
 IMAGE_ID=debian12 ./build-pve-cloud-image.sh
 IMAGE_ID=debian13 ./build-pve-cloud-image.sh
+IMAGE_ID=debian13desktop ./build-pve-cloud-image.sh
 IMAGE_ID=ubuntu2204 ./build-pve-cloud-image.sh
 IMAGE_ID=ubuntu2404 ./build-pve-cloud-image.sh
 IMAGE_ID=ubuntu2604 ./build-pve-cloud-image.sh
+IMAGE_ID=ubuntu2604desktop ./build-pve-cloud-image.sh
 ```
 
 常用环境变量：
