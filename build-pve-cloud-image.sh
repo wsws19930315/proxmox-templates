@@ -371,8 +371,19 @@ qemu-img info "${WORK_IMAGE}"
 echo "[6/8] 压缩镜像..."
 
 rm -f "${FINAL_IMAGE}"
-# 桌面版虚拟磁盘较大，virt-sparsify 对 /tmp 空间的估算会偏保守；忽略预检查，真实空间不足时复制阶段仍会失败。
-sudo env LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-sparsify --check-tmpdir=ignore --compress "${WORK_IMAGE}" "${FINAL_IMAGE}"
+# 桌面版虚拟磁盘较大，优先使用 GitHub runner 上通常更宽裕的 /mnt 作为临时目录。
+if [ -z "${SPARSIFY_TMPDIR:-}" ]; then
+  if [ -d /mnt ] && [ -w /mnt ]; then
+    SPARSIFY_TMPDIR="/mnt/pve-cloud-sparsify/${IMAGE_ID}"
+  else
+    SPARSIFY_TMPDIR="${WORKDIR}/sparsify-tmp"
+  fi
+fi
+mkdir -p "${SPARSIFY_TMPDIR}"
+echo "virt-sparsify TMPDIR：${SPARSIFY_TMPDIR}"
+df -h /tmp "${SPARSIFY_TMPDIR}" || true
+# virt-sparsify 对 /tmp 空间的估算会偏保守；忽略预检查，真实空间不足时复制阶段仍会失败。
+sudo env TMPDIR="${SPARSIFY_TMPDIR}" LIBGUESTFS_BACKEND="${LIBGUESTFS_BACKEND}" virt-sparsify --check-tmpdir=ignore --compress "${WORK_IMAGE}" "${FINAL_IMAGE}"
 
 # 修正文件权限，方便普通用户下载或 scp
 sudo chown "$(id -u):$(id -g)" "${FINAL_IMAGE}"
